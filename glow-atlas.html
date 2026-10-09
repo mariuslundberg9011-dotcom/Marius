@@ -1,0 +1,1526 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Glow Atlas</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<style>
+/* Layout: sticky top bar with tabs; each tab is a two-column workbench (instrument on the left, readout on the right) that stacks to one column on phones. */
+:root{
+  --bg:#f2f3f1; --surface:#ffffff; --surface-2:#e9ebe8; --line:#d4d9d5; --fg:#131718; --muted:#57625f;
+  --accent:#0b6b64; --accent-ink:#ffffff; --accent-soft:#d5ebe7;
+  --good:#256f41; --good-soft:#dbeee1; --warn:#8d5a00; --warn-soft:#f5e8cf; --bad:#a8362f; --bad-soft:#f5dcd8;
+  --heat-0:#e3e6e2; --heat-1:#b9dcd5; --heat-2:#6fb8ad; --heat-3:#0b6b64;
+  --display:"Bricolage Grotesque","Segoe UI",system-ui,sans-serif;
+  --body:"IBM Plex Sans",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  --mono:"IBM Plex Mono",ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  --r:10px;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#0d1011; --surface:#151a1b; --surface-2:#1c2223; --line:#2a3233; --fg:#e7ecea; --muted:#93a09c;
+    --accent:#4ccfc2; --accent-ink:#04201d; --accent-soft:#16312e;
+    --good:#73d095; --good-soft:#163222; --warn:#e6b553; --warn-soft:#352a12; --bad:#f08b80; --bad-soft:#3a1d1a;
+    --heat-0:#1f2627; --heat-1:#1d4440; --heat-2:#2f8a80; --heat-3:#4ccfc2;
+    color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0d1011; --surface:#151a1b; --surface-2:#1c2223; --line:#2a3233; --fg:#e7ecea; --muted:#93a09c;
+  --accent:#4ccfc2; --accent-ink:#04201d; --accent-soft:#16312e;
+  --good:#73d095; --good-soft:#163222; --warn:#e6b553; --warn-soft:#352a12; --bad:#f08b80; --bad-soft:#3a1d1a;
+  --heat-0:#1f2627; --heat-1:#1d4440; --heat-2:#2f8a80; --heat-3:#4ccfc2;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+body{background:var(--bg);color:var(--fg);font-family:var(--body);font-size:15px;line-height:1.55;-webkit-font-smoothing:antialiased}
+h1,h2,h3,h4{font-family:var(--display);font-weight:700;line-height:1.15;text-wrap:balance;margin:0}
+h2{font-size:1.5rem;letter-spacing:-.01em}
+h3{font-size:1.1rem}
+p{margin:0}
+button,input,select,textarea{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.mono{font-family:var(--mono);font-variant-numeric:tabular-nums}
+.muted{color:var(--muted)}
+.small{font-size:.84rem}
+.label{font-size:.72rem;text-transform:uppercase;letter-spacing:.09em;color:var(--muted);font-weight:600}
+
+/* top bar */
+.top{position:sticky;top:env(safe-area-inset-top,0px);z-index:10;background:color-mix(in srgb,var(--bg) 88%,transparent);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);border-bottom:1px solid var(--line)}
+.top-in{max-width:1200px;margin:0 auto;padding:10px 20px;display:flex;align-items:center;gap:16px;flex-wrap:wrap}
+.brand{display:flex;align-items:baseline;gap:10px;margin-right:auto}
+.brand b{font-family:var(--display);font-size:1.3rem;letter-spacing:-.02em}
+.brand span{font-size:.8rem;color:var(--muted)}
+.tabs{display:flex;gap:2px;overflow-x:auto;scrollbar-width:none;max-width:100%}
+.tabs::-webkit-scrollbar{display:none}
+.tab{border:0;background:none;padding:8px 12px;border-radius:8px;cursor:pointer;color:var(--muted);font-weight:500;white-space:nowrap}
+.tab:hover{color:var(--fg);background:var(--surface-2)}
+.tab[aria-selected="true"]{color:var(--fg);background:var(--surface);box-shadow:inset 0 0 0 1px var(--line)}
+.theme-btn{border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:5px 12px;font-size:.82rem;cursor:pointer;color:var(--muted)}
+
+main{max-width:1200px;margin:0 auto;padding-inline:20px;padding-block:24px 64px}
+.head{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:12px;margin-bottom:18px}
+.head p{color:var(--muted);max-width:62ch}
+.bench{display:grid;grid-template-columns:minmax(0,1.05fr) minmax(0,1fr);gap:20px;align-items:start}
+@media (max-width:900px){.bench{grid-template-columns:minmax(0,1fr)}}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:18px;min-width:0}
+.stack{display:flex;flex-direction:column;gap:14px}
+.row{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+
+.btn{border:1px solid var(--line);background:var(--surface);border-radius:8px;padding:8px 13px;cursor:pointer;font-weight:500;font-size:.9rem;display:inline-flex;align-items:center;gap:6px}
+.btn:hover{border-color:var(--muted)}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.btn.primary:hover{filter:brightness(1.08)}
+.btn.danger{color:var(--bad)}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+.btn.ghost{border-color:transparent;background:none;padding-inline:8px}
+input[type=file]{display:none}
+
+/* analysis stage */
+.stage-wrap{width:100%;display:flex;justify-content:center;background:var(--surface-2);border-radius:8px;overflow:hidden;position:relative;min-height:260px}
+.stage-wrap.drag{outline:2px dashed var(--accent);outline-offset:-6px}
+#stage{display:block;touch-action:none;cursor:crosshair;max-width:100%}
+.badge{display:inline-flex;align-items:center;gap:6px;font-size:.75rem;font-weight:600;letter-spacing:.04em;text-transform:uppercase;border-radius:999px;padding:3px 9px;background:var(--warn-soft);color:var(--warn)}
+.stage-badge{position:absolute;left:10px;bottom:10px}
+.stepbox{display:flex;gap:12px;align-items:flex-start;padding:12px 14px;border-radius:8px;background:var(--accent-soft)}
+.stepbox .n{font-family:var(--mono);font-size:.8rem;color:var(--accent);font-weight:500;white-space:nowrap;padding-top:2px}
+.stepbox b{display:block}
+.pts{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:4px}
+.pt{display:flex;gap:8px;align-items:center;border:0;background:none;text-align:left;padding:4px 6px;border-radius:6px;cursor:pointer;font-size:.82rem;color:var(--muted)}
+.pt:hover{background:var(--surface-2)}
+.pt i{width:16px;height:16px;border-radius:50%;flex:none;border:1.5px solid var(--line);display:grid;place-items:center;font-style:normal;font-size:.6rem}
+.pt.done i{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.pt.done{color:var(--fg)}
+.pt.cur{background:var(--accent-soft);color:var(--fg)}
+details.tips summary{cursor:pointer;font-weight:500}
+details.tips ul{margin:8px 0 0;padding-left:18px;color:var(--muted)}
+
+/* readout */
+.summary{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+@media (max-width:520px){.summary{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}}
+.stat{padding:12px;border-radius:8px;background:var(--surface-2);min-width:0}
+.stat .v{font-family:var(--display);font-size:1.35rem;font-weight:700;margin-top:2px;overflow-wrap:anywhere}
+.stat .s{font-size:.78rem;color:var(--muted)}
+.note{padding:10px 12px;border-radius:8px;background:var(--warn-soft);color:var(--fg);font-size:.88rem}
+.metric{border-top:1px solid var(--line)}
+.metric summary{list-style:none;display:grid;grid-template-columns:minmax(0,1fr) auto auto;gap:12px;align-items:center;padding:12px 2px;cursor:pointer}
+.metric summary::-webkit-details-marker{display:none}
+.metric .nm{font-weight:600}
+.metric .rg{font-size:.78rem;color:var(--muted)}
+.metric .val{font-family:var(--mono);font-variant-numeric:tabular-nums;font-size:.95rem;text-align:right}
+.metric .body{padding:0 2px 14px;display:flex;flex-direction:column;gap:8px}
+.metric .body ul{margin:0;padding-left:18px}
+.metric .body li+li{margin-top:4px}
+.chip{font-size:.72rem;font-weight:600;border-radius:999px;padding:3px 9px;white-space:nowrap}
+.chip.in{background:var(--good-soft);color:var(--good)}
+.chip.near{background:var(--warn-soft);color:var(--warn)}
+.chip.out{background:var(--bad-soft);color:var(--bad)}
+.chip.info{background:var(--surface-2);color:var(--muted)}
+.bar{height:6px;border-radius:3px;background:var(--surface-2);position:relative;overflow:hidden}
+.bar>span{position:absolute;inset:0 auto 0 0;background:var(--accent);border-radius:3px}
+.thirds{display:flex;height:8px;border-radius:4px;overflow:hidden;gap:2px}
+.thirds span{background:var(--accent)}
+.thirds span:nth-child(2){opacity:.65}
+.thirds span:nth-child(3){opacity:.4}
+.shape{display:grid;grid-template-columns:auto minmax(0,1fr);gap:6px 14px;font-size:.9rem}
+.shape dt{color:var(--muted);font-size:.8rem;padding-top:2px}
+.shape dd{margin:0}
+
+/* plan */
+.form{display:flex;flex-direction:column;gap:16px}
+fieldset{border:0;margin:0;padding:0;display:flex;flex-direction:column;gap:7px;min-width:0}
+legend{font-weight:600;margin-bottom:6px;padding:0}
+.pills{display:flex;flex-wrap:wrap;gap:6px}
+.pills label{position:relative}
+.pills input{position:absolute;opacity:0;pointer-events:none}
+.pills span{display:inline-block;padding:6px 11px;border-radius:999px;border:1px solid var(--line);font-size:.86rem;cursor:pointer;background:var(--surface)}
+.pills input:checked+span{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.pills input:focus-visible+span{outline:2px solid var(--accent);outline-offset:2px}
+.hint{font-size:.8rem;color:var(--muted)}
+.sec{display:flex;flex-direction:column;gap:2px}
+.sec h3{margin-bottom:6px}
+.item{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:4px 12px;padding:10px 0;border-top:1px solid var(--line)}
+.item b{font-weight:600}
+.item p{grid-column:1/-1;color:var(--muted);font-size:.9rem}
+.ev{font-size:.68rem;font-weight:600;letter-spacing:.05em;text-transform:uppercase;border-radius:4px;padding:2px 6px;align-self:start;white-space:nowrap}
+.ev.Strong{background:var(--good-soft);color:var(--good)}
+.ev.Moderate{background:var(--warn-soft);color:var(--warn)}
+.ev.Weak,.ev.Avoid{background:var(--bad-soft);color:var(--bad)}
+.ev.Pro{background:var(--surface-2);color:var(--muted)}
+.plan-grid{display:grid;grid-template-columns:minmax(0,1fr);gap:14px}
+
+/* today */
+.check{display:flex;gap:12px;align-items:center;padding:11px 4px;border-top:1px solid var(--line);cursor:pointer}
+.check input{width:20px;height:20px;accent-color:var(--accent);flex:none;margin:0}
+.check .t{flex:1;min-width:0}
+.check .t small{display:block;color:var(--muted);font-size:.8rem}
+.check.done .t>span{text-decoration:line-through;color:var(--muted)}
+.heat{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:5px}
+.heat div{aspect-ratio:1;border-radius:4px;background:var(--heat-0);max-width:100%}
+.heat div[data-l="1"]{background:var(--heat-1)}
+.heat div[data-l="2"]{background:var(--heat-2)}
+.heat div[data-l="3"]{background:var(--heat-3)}
+.heat div.today{box-shadow:inset 0 0 0 2px var(--fg)}
+.heat-days{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:5px;font-size:.68rem;color:var(--muted);text-align:center}
+.big{font-family:var(--display);font-size:2.4rem;font-weight:700;line-height:1}
+.addrow{display:flex;gap:8px}
+.addrow input{flex:1;min-width:0}
+.field{border:1px solid var(--line);background:var(--surface);border-radius:8px;padding:8px 10px;width:100%}
+textarea.field{resize:vertical;min-height:80px}
+
+/* progress */
+.gallery{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px}
+.entry{display:flex;flex-direction:column;gap:6px;min-width:0}
+.entry img{width:100%;aspect-ratio:3/4;object-fit:cover;border-radius:8px;background:var(--surface-2)}
+.entry .meta{font-size:.8rem;color:var(--muted);overflow-wrap:anywhere}
+.compare{position:relative;width:100%;max-width:440px;aspect-ratio:3/4;border-radius:8px;overflow:hidden;background:var(--surface-2);margin:0 auto}
+.compare img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.compare .after{clip-path:inset(0 0 0 50%)}
+.compare .divider{position:absolute;top:0;bottom:0;width:2px;background:#fff;left:50%;box-shadow:0 0 0 1px rgba(0,0,0,.3)}
+.compare .tag{position:absolute;top:8px;font-size:.72rem;font-weight:600;background:rgba(0,0,0,.6);color:#fff;padding:2px 8px;border-radius:999px}
+.meter{display:flex;flex-direction:column;gap:6px}
+
+/* ask */
+.answer{display:flex;flex-direction:column;gap:12px}
+.bubble{padding:14px 16px;border-radius:10px;background:var(--surface-2);min-width:0;overflow-wrap:anywhere}
+.bubble.me{background:var(--accent-soft)}
+.bubble h4{font-size:1rem;margin:12px 0 4px}
+.bubble h4:first-child{margin-top:0}
+.bubble p{margin:6px 0}
+.bubble ul,.bubble ol{margin:6px 0;padding-left:20px}
+.report{font-family:var(--mono);font-size:.78rem;min-height:220px;white-space:pre-wrap}
+.steps-ol{margin:0;padding-left:20px;display:flex;flex-direction:column;gap:6px}
+
+#toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(20px + env(safe-area-inset-bottom,0px));background:var(--fg);color:var(--bg);padding:10px 16px;border-radius:8px;font-size:.9rem;z-index:50;max-width:calc(100% - 32px)}
+.foot{max-width:1200px;margin:0 auto;padding-inline:20px;padding-block:0 40px;color:var(--muted);font-size:.8rem}
+@media (max-width:700px){.tabs{order:3;flex-basis:100%}.brand span{display:none}}
+@media (max-width:600px){main{padding-inline:16px}.top-in{padding-inline:16px}.foot{padding-inline:16px}}
+@media (prefers-reduced-motion: reduce){*{transition:none!important;animation:none!important}}
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div class="top-in">
+    <div class="brand"><b>Glow Atlas</b><span>free facial study &amp; glow-up plan</span></div>
+    <nav class="tabs" role="tablist" aria-label="Sections">
+      <button class="tab" role="tab" data-tab="analyze" id="t-analyze">Analyze</button>
+      <button class="tab" role="tab" data-tab="plan" id="t-plan">My plan</button>
+      <button class="tab" role="tab" data-tab="today" id="t-today">Today</button>
+      <button class="tab" role="tab" data-tab="progress" id="t-progress">Progress</button>
+      <button class="tab" role="tab" data-tab="ask" id="t-ask">Ask Claude</button>
+    </nav>
+    <button class="theme-btn" id="themeBtn" type="button">Theme: Auto</button>
+  </div>
+</header>
+
+<main>
+  <!-- ANALYZE -->
+  <section id="tab-analyze" role="tabpanel" aria-labelledby="t-analyze">
+    <div class="head">
+      <div class="stack" style="gap:6px">
+        <h2>Facial proportions</h2>
+        <p>Upload a straight-on photo, tap 18 landmarks, and get the same proportion checks paid reports use: facial thirds, eye spacing, canthal tilt, jaw ratio, symmetry and face shape, each with things you can actually change.</p>
+      </div>
+    </div>
+    <div class="bench">
+      <div class="card stack">
+        <div class="row">
+          <button class="btn primary" id="uploadBtn" type="button">Upload photo</button>
+          <input type="file" id="fileIn" accept="image/*">
+          <button class="btn" id="undoBtn" type="button">Undo point</button>
+          <button class="btn" id="clearBtn" type="button">Clear points</button>
+          <button class="btn" id="guideBtn" type="button" aria-pressed="true">Guides on</button>
+          <button class="btn ghost danger" id="delPhotoBtn" type="button" hidden>Delete photo</button>
+        </div>
+        <div class="stage-wrap" id="stageWrap">
+          <canvas id="stage" aria-label="Photo with landmark points. Tap to place the highlighted landmark; drag a point to adjust it."></canvas>
+          <span class="badge stage-badge" id="exampleBadge">Example face</span>
+        </div>
+        <div class="stepbox" id="stepBox">
+          <span class="n" id="stepN">1 / 18</span>
+          <div><b id="stepName">Hairline</b><span class="small muted" id="stepHint"></span></div>
+        </div>
+        <div>
+          <div class="label" style="margin-bottom:6px">Landmarks · tap one to re-place it</div>
+          <div class="pts" id="ptList"></div>
+        </div>
+        <details class="tips">
+          <summary>How to take a photo that measures well</summary>
+          <ul>
+            <li>Face the camera straight on, eyes level, neutral expression, mouth closed.</li>
+            <li>Hold the phone at eye level and about an arm's length away, or use the back camera with a timer. Close-up selfies widen the nose and narrow the face.</li>
+            <li>Even, soft light from the front (a window in front of you). No filters, no beauty mode.</li>
+            <li>Pull hair back so the hairline, ears and jaw corners are visible.</li>
+            <li>Photos stay in this browser only. Nothing is uploaded.</li>
+          </ul>
+        </details>
+      </div>
+
+      <div class="card stack" id="results" aria-live="polite"></div>
+    </div>
+  </section>
+
+  <!-- PLAN -->
+  <section id="tab-plan" role="tabpanel" aria-labelledby="t-plan" hidden>
+    <div class="head">
+      <div class="stack" style="gap:6px">
+        <h2>My glow-up plan</h2>
+        <p>Answer a few questions. The plan updates instantly and pulls in your face shape and measurements from Analyze. Each tip carries an evidence tag so you know what's proven and what's hype.</p>
+      </div>
+    </div>
+    <div class="bench">
+      <form class="card form" id="profileForm" autocomplete="off">
+        <fieldset><legend>Advice style</legend>
+          <div class="pills" data-name="style">
+            <label><input type="radio" name="style" value="masc" id="st-m"><span>Masculine</span></label>
+            <label><input type="radio" name="style" value="fem" id="st-f"><span>Feminine</span></label>
+            <label><input type="radio" name="style" value="neutral" id="st-n"><span>Neutral / both</span></label>
+          </div>
+        </fieldset>
+        <fieldset><legend>Age</legend>
+          <div class="pills">
+            <label><input type="radio" name="age" value="u18" id="ag-1"><span>Under 18</span></label>
+            <label><input type="radio" name="age" value="18-24" id="ag-2"><span>18–24</span></label>
+            <label><input type="radio" name="age" value="25-34" id="ag-3"><span>25–34</span></label>
+            <label><input type="radio" name="age" value="35-44" id="ag-4"><span>35–44</span></label>
+            <label><input type="radio" name="age" value="45+" id="ag-5"><span>45+</span></label>
+          </div>
+        </fieldset>
+        <fieldset><legend>Skin type</legend>
+          <div class="pills">
+            <label><input type="radio" name="skinType" value="oily" id="sk-1"><span>Oily</span></label>
+            <label><input type="radio" name="skinType" value="dry" id="sk-2"><span>Dry</span></label>
+            <label><input type="radio" name="skinType" value="combination" id="sk-3"><span>Combination</span></label>
+            <label><input type="radio" name="skinType" value="normal" id="sk-4"><span>Normal</span></label>
+            <label><input type="radio" name="skinType" value="sensitive" id="sk-5"><span>Sensitive</span></label>
+          </div>
+          <span class="hint">Not sure? Wash your face, wait an hour. Shiny all over = oily; tight or flaky = dry; shiny only on forehead and nose = combination.</span>
+        </fieldset>
+        <fieldset><legend>Skin concerns</legend>
+          <div class="pills">
+            <label><input type="checkbox" name="concerns" value="acne" id="c-1"><span>Breakouts</span></label>
+            <label><input type="checkbox" name="concerns" value="pores" id="c-2"><span>Blackheads / pores</span></label>
+            <label><input type="checkbox" name="concerns" value="marks" id="c-3"><span>Dark spots / acne marks</span></label>
+            <label><input type="checkbox" name="concerns" value="redness" id="c-4"><span>Redness</span></label>
+            <label><input type="checkbox" name="concerns" value="texture" id="c-5"><span>Dull / uneven texture</span></label>
+            <label><input type="checkbox" name="concerns" value="lines" id="c-6"><span>Fine lines</span></label>
+            <label><input type="checkbox" name="concerns" value="eyes" id="c-7"><span>Dark circles / puffiness</span></label>
+            <label><input type="checkbox" name="concerns" value="flaky" id="c-8"><span>Dry patches</span></label>
+          </div>
+        </fieldset>
+        <fieldset><legend>Skin undertone</legend>
+          <div class="pills">
+            <label><input type="radio" name="undertone" value="warm" id="u-1"><span>Warm</span></label>
+            <label><input type="radio" name="undertone" value="cool" id="u-2"><span>Cool</span></label>
+            <label><input type="radio" name="undertone" value="neutral" id="u-3"><span>Neutral</span></label>
+            <label><input type="radio" name="undertone" value="unsure" id="u-4"><span>Not sure</span></label>
+          </div>
+          <span class="hint">Wrist veins look greenish = warm, bluish/purple = cool, hard to tell = neutral. Gold jewellery flatters warm, silver flatters cool.</span>
+        </fieldset>
+        <fieldset><legend>Hair type</legend>
+          <div class="pills">
+            <label><input type="radio" name="hairType" value="straight" id="h-1"><span>Straight</span></label>
+            <label><input type="radio" name="hairType" value="wavy" id="h-2"><span>Wavy</span></label>
+            <label><input type="radio" name="hairType" value="curly" id="h-3"><span>Curly</span></label>
+            <label><input type="radio" name="hairType" value="coily" id="h-4"><span>Coily</span></label>
+          </div>
+        </fieldset>
+        <fieldset><legend>Hair concerns</legend>
+          <div class="pills">
+            <label><input type="checkbox" name="hairConcerns" value="thinning" id="hc-1"><span>Thinning / receding</span></label>
+            <label><input type="checkbox" name="hairConcerns" value="frizz" id="hc-2"><span>Frizz / dryness</span></label>
+            <label><input type="checkbox" name="hairConcerns" value="dandruff" id="hc-3"><span>Dandruff</span></label>
+            <label><input type="checkbox" name="hairConcerns" value="oily" id="hc-4"><span>Oily scalp</span></label>
+          </div>
+        </fieldset>
+        <fieldset id="beardSet"><legend>Facial hair</legend>
+          <div class="pills">
+            <label><input type="radio" name="beard" value="full" id="b-1"><span>Grows full</span></label>
+            <label><input type="radio" name="beard" value="patchy" id="b-2"><span>Patchy</span></label>
+            <label><input type="radio" name="beard" value="clean" id="b-3"><span>Prefer clean-shaven</span></label>
+            <label><input type="radio" name="beard" value="none" id="b-4"><span>Not relevant</span></label>
+          </div>
+        </fieldset>
+        <fieldset><legend>Body goal</legend>
+          <div class="pills">
+            <label><input type="radio" name="bodyGoal" value="lose" id="bg-1"><span>Lose fat</span></label>
+            <label><input type="radio" name="bodyGoal" value="build" id="bg-2"><span>Build muscle</span></label>
+            <label><input type="radio" name="bodyGoal" value="maintain" id="bg-3"><span>Maintain</span></label>
+          </div>
+        </fieldset>
+        <fieldset><legend>Average sleep</legend>
+          <div class="pills">
+            <label><input type="radio" name="sleep" value="lt6" id="sl-1"><span>Under 6 h</span></label>
+            <label><input type="radio" name="sleep" value="6-7" id="sl-2"><span>6–7 h</span></label>
+            <label><input type="radio" name="sleep" value="7-9" id="sl-3"><span>7–9 h</span></label>
+          </div>
+        </fieldset>
+        <fieldset><legend>Smile</legend>
+          <div class="pills">
+            <label><input type="checkbox" name="teeth" value="yellow" id="te-1"><span>Teeth look yellow</span></label>
+            <label><input type="checkbox" name="teeth" value="crooked" id="te-2"><span>Teeth are crooked</span></label>
+          </div>
+        </fieldset>
+        <fieldset><legend>Monthly budget for products</legend>
+          <div class="pills">
+            <label><input type="radio" name="budget" value="low" id="bu-1"><span>Tight</span></label>
+            <label><input type="radio" name="budget" value="mid" id="bu-2"><span>Some</span></label>
+            <label><input type="radio" name="budget" value="high" id="bu-3"><span>Flexible</span></label>
+          </div>
+        </fieldset>
+      </form>
+      <div class="plan-grid" id="planOut"></div>
+    </div>
+  </section>
+
+  <!-- TODAY -->
+  <section id="tab-today" role="tabpanel" aria-labelledby="t-today" hidden>
+    <div class="head">
+      <div class="stack" style="gap:6px">
+        <h2 id="todayTitle">Today</h2>
+        <p>Your daily routine, built from your plan. Results come from doing the boring basics for 8–12 weeks.</p>
+      </div>
+    </div>
+    <div class="bench">
+      <div class="card stack">
+        <div class="row" style="justify-content:space-between">
+          <div class="label">Checklist</div>
+          <span class="mono small" id="todayCount">0 / 0</span>
+        </div>
+        <div class="bar" aria-hidden="true"><span id="todayBar" style="width:0%"></span></div>
+        <div id="checkList"></div>
+        <div class="addrow">
+          <label for="customTask" class="label" hidden>Add your own task</label>
+          <input class="field" id="customTask" placeholder="Add your own daily task, e.g. 10 min stretching" maxlength="80">
+          <button class="btn" id="addTaskBtn" type="button">Add</button>
+        </div>
+      </div>
+      <div class="card stack">
+        <div class="row" style="gap:28px">
+          <div><div class="label">Streak</div><div class="big" id="streak">0</div><div class="small muted">days at 80%+</div></div>
+          <div><div class="label">Last 28 days</div><div class="big" id="avg28">0%</div><div class="small muted">average completion</div></div>
+        </div>
+        <div>
+          <div class="heat-days" id="heatDays"></div>
+          <div class="heat" id="heat" style="margin-top:5px"></div>
+        </div>
+        <p class="small muted">Darker squares mean more of the checklist got done that day. Skin changes need about 6–12 weeks of consistency before they show; take a progress photo every 2 weeks.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- PROGRESS -->
+  <section id="tab-progress" role="tabpanel" aria-labelledby="t-progress" hidden>
+    <div class="head">
+      <div class="stack" style="gap:6px">
+        <h2>Progress photos</h2>
+        <p>Same spot, same light, same distance every two weeks. Then compare any two with the slider.</p>
+      </div>
+    </div>
+    <div class="bench">
+      <div class="stack">
+        <div class="card stack">
+          <h3>Add an entry</h3>
+          <div class="row">
+            <label class="small" for="entryDate">Date</label>
+            <input class="field" type="date" id="entryDate" style="width:auto">
+            <button class="btn" id="entryPhotoBtn" type="button">Choose photo</button>
+            <input type="file" id="entryFile" accept="image/*">
+            <span class="small muted" id="entryFileName">No photo chosen</span>
+          </div>
+          <label class="small" for="entryNote">Note</label>
+          <textarea class="field" id="entryNote" placeholder="e.g. Week 4 of adapalene, new haircut, down 2 kg" maxlength="400"></textarea>
+          <div><button class="btn primary" id="addEntryBtn" type="button">Save entry</button></div>
+        </div>
+        <div class="card stack">
+          <h3>Compare</h3>
+          <div class="row">
+            <label class="small" for="cmpA">Before</label><select class="field" id="cmpA" style="width:auto;max-width:100%"></select>
+            <label class="small" for="cmpB">After</label><select class="field" id="cmpB" style="width:auto;max-width:100%"></select>
+          </div>
+          <div class="compare" id="compareBox">
+            <img id="cmpImgA" alt="Before photo"><img id="cmpImgB" class="after" alt="After photo">
+            <div class="divider" id="cmpDivider"></div>
+            <span class="tag" style="left:8px">Before</span><span class="tag" style="right:8px">After</span>
+          </div>
+          <label class="small" for="cmpRange">Slide to compare</label>
+          <input type="range" id="cmpRange" min="0" max="100" value="50">
+        </div>
+      </div>
+      <div class="stack">
+        <div class="card stack">
+          <div class="row" style="justify-content:space-between"><h3>Journal</h3><span class="small muted mono" id="entryCount"></span></div>
+          <div class="gallery" id="gallery"></div>
+        </div>
+        <div class="card stack">
+          <h3>Your data</h3>
+          <div class="meter">
+            <div class="row" style="justify-content:space-between"><span class="small">Browser storage used</span><span class="mono small" id="storeUse"></span></div>
+            <div class="bar"><span id="storeBar" style="width:0%"></span></div>
+          </div>
+          <p class="small muted">Everything lives in this browser's local storage. Clearing site data or using a private window erases it, so export a backup now and then.</p>
+          <div class="row">
+            <button class="btn" id="exportBtn" type="button">Export backup</button>
+            <button class="btn" id="importBtn" type="button">Import backup</button>
+            <input type="file" id="importFile" accept="application/json,.json">
+            <button class="btn ghost danger" id="wipeBtn" type="button">Erase all data</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ASK -->
+  <section id="tab-ask" role="tabpanel" aria-labelledby="t-ask" hidden>
+    <div class="head">
+      <div class="stack" style="gap:6px">
+        <h2>Ask Claude about your photo</h2>
+        <p>Claude can look at your photo plus your measurements and profile and write a personal report. No scores or rankings, just specific changes ranked by impact.</p>
+      </div>
+    </div>
+    <div class="bench">
+      <div class="stack">
+        <div class="card stack" id="livePanel" hidden>
+          <h3>Ask right here</h3>
+          <div class="row" id="photoOpts">
+            <label class="row small" style="gap:6px"><input type="checkbox" id="useMainPhoto" checked> Include my Analyze photo</label>
+          </div>
+          <div class="row" id="extraOpts">
+            <button class="btn" id="extraBtn" type="button">Add more photos</button>
+            <input type="file" id="extraFile" accept="image/jpeg,image/png,image/webp" multiple>
+            <span class="small muted" id="extraNames">Side profile or full-body shots help with hair and style advice.</span>
+          </div>
+          <fieldset><legend class="small">Focus</legend>
+            <div class="pills">
+              <label><input type="radio" name="focus" value="full" id="f-1" checked><span>Full glow-up</span></label>
+              <label><input type="radio" name="focus" value="skin" id="f-2"><span>Skin</span></label>
+              <label><input type="radio" name="focus" value="hair" id="f-3"><span>Hair &amp; grooming</span></label>
+              <label><input type="radio" name="focus" value="style" id="f-4"><span>Style &amp; colours</span></label>
+              <label><input type="radio" name="focus" value="photos" id="f-5"><span>Better photos</span></label>
+            </div>
+          </fieldset>
+          <label class="small" for="askQ">Anything specific? (optional)</label>
+          <textarea class="field" id="askQ" placeholder="e.g. What haircut would suit me? Should I grow a beard?" maxlength="1000"></textarea>
+          <div class="row">
+            <button class="btn primary" id="askBtn" type="button">Ask Claude</button>
+            <button class="btn" id="stopBtn" type="button" hidden>Stop</button>
+            <span class="small muted" id="askStatus"></span>
+          </div>
+        </div>
+        <div class="card stack" id="fallbackPanel">
+          <h3 id="fallbackTitle">Send it to Claude in a chat</h3>
+          <ol class="steps-ol small">
+            <li>Press <b>Copy report</b>. It contains your measurements, profile and instructions.</li>
+            <li>Open a new chat with Claude and attach your photo (front, and side profile if you have one).</li>
+            <li>Paste the report and send.</li>
+          </ol>
+          <div class="row">
+            <button class="btn primary" id="copyBtn" type="button">Copy report</button>
+            <span class="small muted" id="copyStatus"></span>
+          </div>
+          <label class="small" for="reportText">Report preview</label>
+          <textarea class="field report" id="reportText" readonly></textarea>
+        </div>
+      </div>
+      <div class="card stack">
+        <div class="row" style="justify-content:space-between"><h3>Claude's report</h3><button class="btn ghost small" id="clearChatBtn" type="button" hidden>Clear</button></div>
+        <div class="answer" id="answer"><p class="muted small" id="answerEmpty">Your report will appear here. In this view, use the chat route on the left if asking here isn't available.</p></div>
+        <div class="addrow" id="followRow" hidden>
+          <label for="followQ" hidden>Follow-up question</label>
+          <input class="field" id="followQ" placeholder="Ask a follow-up…" maxlength="600">
+          <button class="btn" id="followBtn" type="button">Send</button>
+        </div>
+      </div>
+    </div>
+  </section>
+</main>
+<p class="foot">Measurements are estimates from points you place on a 2D photo; lens distance, head angle and expression all shift them. This is grooming and lifestyle guidance, not medical advice. See a dermatologist or doctor for skin conditions, hair loss medication or any procedure.</p>
+<div id="toast" role="status" hidden></div>
+
+<script>
+(function(){
+'use strict';
+const $ = (s, r) => (r || document).querySelector(s);
+const $$ = (s, r) => Array.from((r || document).querySelectorAll(s));
+const esc = s => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const z2 = n => String(n).padStart(2, '0');
+const dayKey = d => { d = d || new Date(); return d.getFullYear() + '-' + z2(d.getMonth() + 1) + '-' + z2(d.getDate()); };
+const fmt = (n, d) => Number(n).toFixed(d == null ? 2 : d);
+
+/* ---------- storage ---------- */
+const KEY = 'glowatlas.v1.';
+const store = {
+  get(k, d){ try { const v = localStorage.getItem(KEY + k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } },
+  set(k, v){
+    try { localStorage.setItem(KEY + k, JSON.stringify(v)); return true; }
+    catch (e) {
+      toast(e && (e.name === 'QuotaExceededError' || e.code === 22) ? 'Storage is full. Delete a few progress photos or export a backup.' : 'This browser blocked saving (private window?). Changes last until you close the tab.');
+      return false;
+    }
+  },
+  del(k){ try { localStorage.removeItem(KEY + k); } catch (e) {} },
+  keys(){ try { return Object.keys(localStorage).filter(k => k.indexOf(KEY) === 0); } catch (e) { return []; } }
+};
+
+let toastT;
+function toast(msg){ const t = $('#toast'); t.textContent = msg; t.hidden = false; clearTimeout(toastT); toastT = setTimeout(() => { t.hidden = true; }, 3400); }
+
+/* ---------- theme ---------- */
+const root = document.documentElement;
+const hostTheme = root.getAttribute('data-theme');
+let theme = store.get('theme', 'auto');
+function applyTheme(){
+  if (theme === 'auto') { if (hostTheme) root.setAttribute('data-theme', hostTheme); else root.removeAttribute('data-theme'); }
+  else root.setAttribute('data-theme', theme);
+  $('#themeBtn').textContent = 'Theme: ' + ({auto:'Auto', light:'Light', dark:'Dark'})[theme];
+}
+$('#themeBtn').addEventListener('click', () => { theme = ({auto:'light', light:'dark', dark:'auto'})[theme]; store.set('theme', theme); applyTheme(); });
+applyTheme();
+
+/* ---------- tabs ---------- */
+const TABS = ['analyze', 'plan', 'today', 'progress', 'ask'];
+function showTab(t){
+  if (TABS.indexOf(t) < 0) t = 'analyze';
+  TABS.forEach(x => { $('#tab-' + x).hidden = x !== t; $('#t-' + x).setAttribute('aria-selected', String(x === t)); });
+  store.set('tab', t);
+  if (t === 'analyze') requestAnimationFrame(fit);
+  if (t === 'plan') renderPlan();
+  if (t === 'today') renderToday();
+  if (t === 'progress') renderProgress();
+  if (t === 'ask') renderReport();
+}
+$$('.tab').forEach(b => b.addEventListener('click', () => showTab(b.dataset.tab)));
+
+/* ---------- landmarks ---------- */
+const LM = [
+  {id:'hairline',  label:'Hairline',                      hint:'Top centre of the forehead where hair starts. If it recedes, mark where it naturally sat.'},
+  {id:'glabella',  label:'Between the brows',             hint:'The midpoint between your eyebrows, at brow height.'},
+  {id:'eyeLO',     label:'Eye outer corner · photo left', hint:'Outer corner of the eye on the left side of the photo.'},
+  {id:'eyeLI',     label:'Eye inner corner · photo left', hint:'Inner corner (tear duct) of the same eye.'},
+  {id:'eyeRI',     label:'Eye inner corner · photo right',hint:'Inner corner of the eye on the right side of the photo.'},
+  {id:'eyeRO',     label:'Eye outer corner · photo right',hint:'Outer corner of that eye.'},
+  {id:'cheekL',    label:'Cheekbone edge · photo left',   hint:'The widest point of the face at cheekbone level, on the face outline.'},
+  {id:'cheekR',    label:'Cheekbone edge · photo right',  hint:'Same point on the other side.'},
+  {id:'noseL',     label:'Nostril wing · photo left',     hint:'The outermost edge of the nostril.'},
+  {id:'noseR',     label:'Nostril wing · photo right',    hint:'The outermost edge of the other nostril.'},
+  {id:'subnasale', label:'Base of the nose',              hint:'Centre point where the nose meets the upper lip.'},
+  {id:'lipTop',    label:'Top of upper lip',              hint:'Centre of the upper lip edge (the dip of the cupid’s bow).'},
+  {id:'mouthL',    label:'Mouth corner · photo left',     hint:'Where the lips meet on the left of the photo.'},
+  {id:'mouthR',    label:'Mouth corner · photo right',    hint:'Where the lips meet on the right of the photo.'},
+  {id:'lipBottom', label:'Bottom of lower lip',           hint:'Centre of the lower lip’s bottom edge.'},
+  {id:'jawL',      label:'Jaw corner · photo left',       hint:'The angle of the jaw below the ear, on the face outline.'},
+  {id:'jawR',      label:'Jaw corner · photo right',      hint:'Same point on the other side.'},
+  {id:'chin',      label:'Bottom of chin',                hint:'Lowest centre point of the chin.'}
+];
+const EXAMPLE_POINTS = {
+  hairline:{x:300,y:165}, glabella:{x:300,y:300},
+  eyeLO:{x:197,y:331}, eyeLI:{x:265,y:337}, eyeRI:{x:336,y:338}, eyeRO:{x:404,y:333},
+  cheekL:{x:145,y:385}, cheekR:{x:455,y:385}, noseL:{x:268,y:432}, noseR:{x:332,y:432},
+  subnasale:{x:300,y:445}, lipTop:{x:300,y:474}, mouthL:{x:250,y:493}, mouthR:{x:350,y:493},
+  lipBottom:{x:300,y:518}, jawL:{x:175,y:515}, jawR:{x:428,y:519}, chin:{x:302,y:590}
+};
+
+function makeExampleFace(){
+  const c = document.createElement('canvas'); c.width = 600; c.height = 780;
+  const g = c.getContext('2d');
+  const bg = g.createLinearGradient(0, 0, 0, 780); bg.addColorStop(0, '#c9d1cf'); bg.addColorStop(1, '#a9b4b1');
+  g.fillStyle = bg; g.fillRect(0, 0, 600, 780);
+  const skin = '#d8bfae', shade = '#c4a793', ink = '#4a3a32';
+  // shoulders + neck
+  g.fillStyle = '#56636a'; g.beginPath(); g.moveTo(40, 780); g.quadraticCurveTo(70, 650, 230, 640); g.lineTo(370, 640); g.quadraticCurveTo(530, 650, 560, 780); g.fill();
+  g.fillStyle = shade; g.fillRect(232, 540, 136, 120);
+  // ears
+  g.fillStyle = skin; g.beginPath(); g.ellipse(140, 395, 22, 45, -0.15, 0, 7); g.fill(); g.beginPath(); g.ellipse(460, 395, 22, 45, 0.15, 0, 7); g.fill();
+  // face
+  g.beginPath();
+  g.moveTo(300, 110);
+  g.bezierCurveTo(400, 110, 462, 200, 458, 330);
+  g.quadraticCurveTo(458, 385, 455, 395);
+  g.quadraticCurveTo(445, 480, 425, 515);
+  g.quadraticCurveTo(380, 580, 300, 590);
+  g.quadraticCurveTo(220, 580, 175, 515);
+  g.quadraticCurveTo(155, 480, 145, 395);
+  g.quadraticCurveTo(142, 385, 142, 330);
+  g.bezierCurveTo(138, 200, 200, 110, 300, 110);
+  g.fillStyle = skin; g.fill();
+  // hair
+  g.fillStyle = '#3b2c25'; g.beginPath();
+  g.moveTo(132, 330); g.bezierCurveTo(110, 120, 230, 70, 300, 72); g.bezierCurveTo(370, 70, 490, 120, 468, 330);
+  g.quadraticCurveTo(455, 230, 420, 190); g.quadraticCurveTo(360, 160, 300, 165); g.quadraticCurveTo(240, 160, 180, 190); g.quadraticCurveTo(145, 230, 132, 330); g.fill();
+  // brows
+  g.strokeStyle = '#3b2c25'; g.lineCap = 'round'; g.lineWidth = 9;
+  g.beginPath(); g.moveTo(190, 312); g.quadraticCurveTo(230, 290, 280, 302); g.stroke();
+  g.beginPath(); g.moveTo(410, 312); g.quadraticCurveTo(370, 290, 320, 302); g.stroke();
+  // eyes
+  function eye(o, i){ const mx = (o.x + i.x) / 2, my = (o.y + i.y) / 2;
+    g.fillStyle = '#f4efe9'; g.beginPath(); g.moveTo(o.x, o.y); g.quadraticCurveTo(mx, my - 22, i.x, i.y); g.quadraticCurveTo(mx, my + 16, o.x, o.y); g.fill();
+    g.fillStyle = '#5b4636'; g.beginPath(); g.arc(mx, my - 1, 11, 0, 7); g.fill(); g.fillStyle = '#1b1411'; g.beginPath(); g.arc(mx, my - 1, 5, 0, 7); g.fill();
+    g.strokeStyle = ink; g.lineWidth = 2; g.beginPath(); g.moveTo(o.x, o.y); g.quadraticCurveTo(mx, my - 22, i.x, i.y); g.stroke(); }
+  eye(EXAMPLE_POINTS.eyeLO, EXAMPLE_POINTS.eyeLI); eye(EXAMPLE_POINTS.eyeRO, EXAMPLE_POINTS.eyeRI);
+  // nose
+  g.strokeStyle = shade; g.lineWidth = 3; g.beginPath(); g.moveTo(288, 330); g.quadraticCurveTo(282, 400, 276, 420); g.stroke();
+  g.strokeStyle = ink; g.lineWidth = 2.5; g.beginPath(); g.moveTo(268, 432); g.quadraticCurveTo(272, 446, 290, 442); g.quadraticCurveTo(300, 450, 310, 442); g.quadraticCurveTo(328, 446, 332, 432); g.stroke();
+  // lips
+  g.fillStyle = '#b97b72'; g.beginPath(); g.moveTo(250, 493); g.quadraticCurveTo(280, 470, 300, 478); g.quadraticCurveTo(320, 470, 350, 493); g.quadraticCurveTo(300, 498, 250, 493); g.fill();
+  g.fillStyle = '#c98d83'; g.beginPath(); g.moveTo(250, 493); g.quadraticCurveTo(300, 498, 350, 493); g.quadraticCurveTo(300, 530, 250, 493); g.fill();
+  return c.toDataURL('image/png');
+}
+
+/* ---------- geometry ---------- */
+const mid = (a, b) => ({x:(a.x + b.x) / 2, y:(a.y + b.y) / 2});
+const dist = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
+const rot = (p, c, a) => { const dx = p.x - c.x, dy = p.y - c.y, cs = Math.cos(a), sn = Math.sin(a); return {x:c.x + dx * cs - dy * sn, y:c.y + dx * sn + dy * cs}; };
+const deg = r => r * 180 / Math.PI;
+
+function grade(v, inLo, inHi, nearLo, nearHi){ if (v >= inLo && v <= inHi) return 'in'; if (v >= nearLo && v <= nearHi) return 'near'; return 'out'; }
+const STATUS_TXT = {in:'Typical range', near:'Slightly off', out:'Outside range', info:'Descriptive'};
+
+const SHAPES = {
+  Oval:{sum:'Length a bit greater than width, jaw slightly narrower than the cheekbones. The most versatile shape.',
+    hairM:'Nearly anything works: textured crop, side part, quiff, medium-length flow.', hairF:'Most lengths work: long layers, a lob, curtain bangs.',
+    glasses:'Most frames. Keep the frame about as wide as the widest part of your face.', beard:'Short boxed beard or heavy stubble keeps the balance.'},
+  Round:{sum:'Width and length are close, with soft jaw corners.',
+    hairM:'Height on top with tapered sides (quiff, pompadour, textured fringe swept up). Avoid round bowl cuts.', hairF:'Long layers past the chin, a deep side part, volume at the crown. Avoid chin-length rounded bobs.',
+    glasses:'Angular, rectangular or square frames that are wider than they are tall.', beard:'Short on the sides, longer at the chin to add length and angle.'},
+  Square:{sum:'Jaw nearly as wide as the cheekbones with a shorter face. Reads strong and defined.',
+    hairM:'Classic short cuts: crew cut, buzz, side part, textured crop. Clean edges suit you.', hairF:'Soft waves and layers around the jaw, side-swept bangs, longer lengths.',
+    glasses:'Round or oval frames soften the corners.', beard:'Stubble, or a short beard rounded slightly at the chin.'},
+  Oblong:{sum:'Face is clearly longer than it is wide.',
+    hairM:'Fuller sides and a forward fringe. Avoid tall quiffs that add more length.', hairF:'Bangs, waves and volume at the sides. Avoid long, flat, straight hair with height on top.',
+    glasses:'Deep frames with a strong top line; decorative temples add width.', beard:'Fuller on the cheeks, kept short on the chin.'},
+  Rectangular:{sum:'Long face with a strong, wide jaw.',
+    hairM:'Medium length with some side fullness, a fringe or textured top that falls forward.', hairF:'Side-swept bangs and waves at cheek level; avoid height at the crown.',
+    glasses:'Deep, rounded frames.', beard:'Short and even; avoid extra length at the chin.'},
+  Heart:{sum:'Wider at the cheekbones and forehead, tapering to a narrower jaw and chin.',
+    hairM:'Medium length with fullness at the sides; a textured fringe falling forward.', hairF:'Chin-length bob or lob, side-swept bangs, volume around the jaw.',
+    glasses:'Frames wider at the bottom, light rimless styles or aviators.', beard:'A fuller beard adds width at the jaw and balances the forehead.'}
+};
+
+function analyze(P, style){
+  for (const lm of LM) if (!P[lm.id]) return {ok:false, n:LM.filter(l => P[l.id]).length};
+  const eL = mid(P.eyeLO, P.eyeLI), eR = mid(P.eyeRI, P.eyeRO);
+  const roll = Math.atan2(eR.y - eL.y, eR.x - eL.x);
+  const c = mid(eL, eR);
+  const R = {}; for (const lm of LM) R[lm.id] = rot(P[lm.id], c, -roll);
+  const out = {ok:true, roll, c, R, metrics:[], warnings:[]};
+  const W = Math.abs(R.cheekR.x - R.cheekL.x);
+  const up = R.glabella.y - R.hairline.y, md = R.subnasale.y - R.glabella.y, lo = R.chin.y - R.subnasale.y;
+  if (up <= 0 || md <= 0 || lo <= 0 || W <= 0 || R.cheekR.x < R.cheekL.x) {
+    out.ok = false; out.order = true; return out;
+  }
+  const M = style === 'masc', F = style === 'fem';
+  const rollDeg = deg(roll);
+  if (Math.abs(rollDeg) > 4) out.warnings.push('Your head is tilted about ' + Math.abs(rollDeg).toFixed(0) + '°. It’s been corrected for, but a level photo is more accurate.');
+  const midX = (R.glabella.x + R.subnasale.x + R.chin.x) / 3;
+  const yaw = (midX - (R.cheekL.x + R.cheekR.x) / 2) / W;
+  if (Math.abs(yaw) > 0.045) out.warnings.push('Your face looks turned slightly to one side. Widths and symmetry will be less accurate; a straight-on photo fixes this.');
+
+  // 1. thirds
+  const T = up + md + lo, pu = up / T * 100, pm = md / T * 100, pl = lo / T * 100;
+  const dev = Math.max(Math.abs(pu - 33.3), Math.abs(pm - 33.3), Math.abs(pl - 33.3));
+  const thirdsTips = [];
+  if (pu > 36) thirdsTips.push(F ? 'Longer upper third: curtain bangs, a side-swept fringe or a slightly lower part shorten the forehead.' : 'Longer upper third: a textured fringe or crop that falls forward shortens the forehead. Skip slicked-back styles and tall quiffs.');
+  if (pu < 30) thirdsTips.push('Shorter upper third: show the forehead. Push hair up and back and keep some height on top.');
+  if (pm > 36) thirdsTips.push(F ? 'Longer middle third: sweep blush horizontally across the cheeks rather than up toward the temples.' : 'Longer middle third: glasses with a solid, lower-set bridge visually break up the length.');
+  if (pm < 30) thirdsTips.push('Shorter middle third: groom brows so they sit tidy and slightly lifted; avoid a heavy fringe resting on them.');
+  if (pl > 36) thirdsTips.push(M ? 'Longer lower third: keep beard length short at the chin and fuller at the sides. No long goatee.' : F ? 'Longer lower third: a soft contour at the tip of the chin and hair volume at jaw level balance it.' : 'Longer lower third: keep chin hair short and add volume at jaw level with your haircut.');
+  if (pl < 30) thirdsTips.push(M ? 'Shorter lower third: grow extra length at the chin (boxed beard or extended goatee) to lengthen it.' : 'Shorter lower third: highlight the centre of the chin and avoid hair that ends exactly at chin level.');
+  if (!thirdsTips.length) thirdsTips.push('Your thirds are balanced. Any haircut that keeps the forehead partly visible will preserve that.');
+  out.metrics.push({id:'thirds', name:'Facial thirds', value:fmt(pu,0) + ' · ' + fmt(pm,0) + ' · ' + fmt(pl,0) + '%', range:'about 33 · 33 · 33%',
+    status:grade(dev, 0, 3.5, 0, 6.5), thirds:[pu, pm, pl],
+    meaning:'Hairline to brows, brows to nose base, and nose base to chin. Classical proportions put them roughly equal. Hairline position varies a lot, so the upper third is the least reliable.',
+    tips:thirdsTips});
+
+  // 2. lower third split
+  const stom = (R.mouthL.y + R.mouthR.y) / 2;
+  const ls = (stom - R.subnasale.y) / (R.chin.y - stom);
+  const lsTips = [];
+  if (ls > 0.58) lsTips.push(M ? 'Longer upper lip area: a moustache (as part of stubble or a beard) visually shortens it.' : 'Longer upper lip area: line the cupid’s bow slightly above the natural edge and use gloss on the centre of the upper lip. A “lip flip” is a professional option.');
+  else if (ls < 0.42) lsTips.push(M ? 'Longer chin relative to the upper lip: keep beard length off the chin, fuller on the moustache and sides.' : 'Longer chin relative to the upper lip: soft contour at the chin tip; fuller upper-lip liner balances it.');
+  else lsTips.push('Upper lip and chin are in a balanced proportion.');
+  out.metrics.push({id:'lower', name:'Lip-to-chin balance', value:'1 : ' + fmt(1 / ls, 1), range:'about 1 : 2', status:grade(ls, 0.42, 0.58, 0.36, 0.66),
+    meaning:'Within the lower third, nose base to mouth line versus mouth line to chin. Around 1 : 2 is the textbook proportion.', tips:lsTips});
+
+  // 3. eye spacing
+  const wL = dist(R.eyeLO, R.eyeLI), wR = dist(R.eyeRI, R.eyeRO), ew = (wL + wR) / 2, ic = dist(R.eyeLI, R.eyeRI);
+  const es = ic / ew;
+  const esTips = [];
+  if (es > 1.1) esTips.push(F ? 'Wider-set eyes: start brows a touch closer to the nose and concentrate darker shadow or liner on the inner third.' : 'Wider-set eyes: keep the inner brows full (don’t over-pluck between them). Frames with a dark, solid bridge pull focus inward.');
+  else if (es < 0.9) esTips.push(F ? 'Closer-set eyes: lighten the inner corners, start liner from the middle outward and extend it slightly past the outer corner.' : 'Closer-set eyes: tidy the hair between the brows so the brows start in line with the inner eye corners. Frames with a thin or clear bridge open the space.');
+  else esTips.push('Eye spacing is about one eye-width apart, the classic proportion. No change needed.');
+  out.metrics.push({id:'eyes', name:'Eye spacing', value:fmt(es) + '×', range:'0.90–1.10× eye width', status:grade(es, 0.9, 1.1, 0.8, 1.22),
+    meaning:'Gap between the inner eye corners divided by the width of one eye (the “rule of fifths”).', tips:esTips});
+
+  // 4. canthal tilt
+  const tL = deg(Math.atan2(R.eyeLI.y - R.eyeLO.y, Math.abs(R.eyeLI.x - R.eyeLO.x)));
+  const tR = deg(Math.atan2(R.eyeRI.y - R.eyeRO.y, Math.abs(R.eyeRO.x - R.eyeRI.x)));
+  const tilt = (tL + tR) / 2;
+  const ctTips = [];
+  if (tilt < 2) {
+    ctTips.push(F ? 'Neutral or downturned tilt: wing or tightline liner angled upward from the outer corner; place shadow higher at the outer corner.' : 'Neutral or downturned tilt: shape the brow tail so it ends level with or slightly above the brow head; don’t let it droop.');
+    ctTips.push('Under-eye puffiness exaggerates a downturn. Sleep, less salt and alcohol in the evening, and a cold compress in the morning help.');
+    ctTips.push('Frames with upswept outer corners (browline or subtle cat-eye) lift the eye area.');
+  } else ctTips.push('Positive tilt. Keep brows groomed so the tail doesn’t droop over the outer corner.');
+  ctTips.push('Camera angle changes this a lot: shoot at eye level, not from below.');
+  out.metrics.push({id:'tilt', name:'Canthal tilt', value:(tilt >= 0 ? '+' : '') + fmt(tilt, 1) + '°', range:'+2° to +8°', status:grade(tilt, 2, 8.5, 0, 11),
+    meaning:'Angle from inner to outer eye corner. A slight upward tilt reads as alert and youthful. Left eye ' + fmt(tL, 1) + '°, right eye ' + fmt(tR, 1) + '°.', tips:ctTips});
+
+  // 5. FWHR
+  const fwhr = W / (R.lipTop.y - R.glabella.y);
+  out.metrics.push({id:'fwhr', name:'Width-to-height (FWHR)', value:fmt(fwhr), range:'1.75–2.10 common', status:'info', statusOverride:grade(fwhr, 1.75, 2.1, 1.6, 2.25),
+    meaning:'Cheekbone width divided by brow-to-upper-lip height. Higher values read broader and stronger, lower values longer and narrower. Neither is better; it guides hair and beard choices.',
+    tips:[fwhr > 2.1 ? 'Broad mid-face: some height on top and tidy sides keep it from reading too wide.' : fwhr < 1.75 ? 'Long mid-face: volume at the sides and a fringe add width; avoid tall styles.' : 'Middle of the common range. Most styles work.']});
+
+  // 6. jaw to cheek
+  const jc = Math.abs(R.jawR.x - R.jawL.x) / W;
+  const jr = M ? [0.84, 0.96, 0.78, 1.0] : F ? [0.74, 0.86, 0.68, 0.92] : [0.78, 0.92, 0.72, 0.97];
+  const jcTips = [];
+  if (jc < jr[0]) {
+    jcTips.push('Lower body fat is the biggest lever for jaw visibility; even 3–5% less body fat shows first in the face.');
+    if (M) jcTips.push('A boxed beard with squared corners at the jaw angle adds width and definition. Neck and trap training broadens the frame below.');
+    else if (F) jcTips.push('A soft contour just under the cheekbones and hair with volume at jaw level add shape.');
+    else jcTips.push('Haircuts with volume at jaw level, or a short boxed beard, add width there.');
+  } else if (jc > jr[1]) {
+    jcTips.push(M ? 'Strong, wide jaw. Keep the beard short or clean-shaven to show it.' : 'Wide jaw: soft layers that fall past the jaw and a side part soften the corners; contour lightly on the jaw angles if you wear makeup.');
+  } else jcTips.push('Jaw width is in balance with the cheekbones for your chosen style.');
+  jcTips.push('Posture matters: forward head posture blurs the jawline. Keep screens at eye level.');
+  out.metrics.push({id:'jaw', name:'Jaw-to-cheek width', value:fmt(jc), range:fmt(jr[0]) + '–' + fmt(jr[1]), status:grade(jc, jr[0], jr[1], jr[2], jr[3]),
+    meaning:'Jaw-corner width divided by cheekbone width. Masculine-presenting faces typically sit higher, feminine-presenting lower.', tips:jcTips});
+
+  // 7. nose width
+  const nw = Math.abs(R.noseR.x - R.noseL.x), nr = nw / ic;
+  out.metrics.push({id:'nose', name:'Nose width', value:fmt(nr) + '×', range:'0.90–1.15× eye gap', status:grade(nr, 0.9, 1.15, 0.8, 1.3),
+    meaning:'Nostril width compared with the gap between the inner eye corners. Close-up selfies widen the nose by 20–30%, so check this with a photo taken from arm’s length or further.',
+    tips:nr > 1.15 ? [F ? 'Light contour down the sides of the nose and a highlight on the bridge narrow it visually.' : 'Fuller brows and some facial hair balance a wider nose. Frames that are wide enough for your face help too.', 'Take photos from further away and zoom in; wide-angle lenses at close range widen the nose noticeably.'] : ['Nose width is in proportion with the eye spacing.']});
+
+  // 8. mouth width
+  const mw = Math.abs(R.mouthR.x - R.mouthL.x), mr = mw / nw;
+  out.metrics.push({id:'mouth', name:'Mouth width', value:fmt(mr) + '×', range:'1.40–1.70× nose width', status:grade(mr, 1.4, 1.7, 1.25, 1.85),
+    meaning:'Mouth-corner width divided by nose width. Close to the golden ratio (1.62) is the classic target.',
+    tips:mr < 1.4 ? [F ? 'Narrower mouth: lip liner taken just to the outer corners and lighter shades make it look wider; avoid very dark lipstick.' : 'Narrower mouth: keep the moustache trimmed above the lip line so it doesn’t hide the corners.'] : ['Mouth width is in proportion.']});
+
+  // 9. lip ratio
+  const ul = stom - R.lipTop.y, ll = R.lipBottom.y - stom;
+  const lr = ul > 0 ? ll / ul : 0;
+  out.metrics.push({id:'lips', name:'Lower-to-upper lip', value:lr ? fmt(lr, 1) + '×' : '—', range:'1.3–2.0×', status:lr ? grade(lr, 1.3, 2.0, 1.1, 2.4) : 'near',
+    meaning:'Lower lip height divided by upper lip height (measured at the centre). A lower lip roughly 1.6× the upper is typical.',
+    tips:[lr && lr > 2.0 ? (F ? 'Thinner upper lip: line just above the cupid’s bow and add gloss at the centre.' : 'Thinner upper lip: keep lips hydrated (SPF lip balm) so the edge stays defined.') : lr && lr < 1.3 ? 'Fuller upper lip relative to the lower; nothing to fix.' : 'Lip proportions are typical.', 'Hydration and an SPF lip balm keep the lip border crisp at any shape.']});
+
+  // 10. symmetry
+  const pairs = [['eyeLO','eyeRO','outer eye corners'],['eyeLI','eyeRI','inner eye corners'],['cheekL','cheekR','cheekbones'],['noseL','noseR','nostrils'],['mouthL','mouthR','mouth corners'],['jawL','jawR','jaw corners']];
+  let sum = 0, worst = null, wv = -1;
+  for (const [a, b, nm] of pairs) {
+    const pa = R[a], pb = R[b];
+    const d = Math.hypot((pa.x + pb.x) / 2 - midX, pa.y - pb.y) / W;
+    sum += d; if (d > wv) { wv = d; worst = nm; }
+  }
+  const avg = sum / pairs.length;
+  const sym = Math.max(0, Math.min(100, 100 - avg * 250));
+  out.symmetry = sym;
+  out.metrics.push({id:'sym', name:'Symmetry', value:fmt(sym, 0) + '%', range:'93%+ typical', status:grade(sym, 93, 100, 87, 100),
+    meaning:'How closely paired points mirror each other across the face’s midline. Nobody is perfectly symmetric; differences under about 5% are hard to notice in person. Biggest difference: ' + worst + '.',
+    tips:['Part your hair on the side that looks fuller, and photograph your stronger side (try both and compare).', 'If you always sleep on one side or chew on one side, alternating may help soft-tissue puffiness over time (weak evidence).', 'A brow that sits higher on one side can be evened out by trimming or filling the lower one.']});
+
+  // face shape
+  const L = R.chin.y - R.hairline.y, lw = L / W;
+  let shape;
+  if (lw >= 1.48) shape = jc >= 0.88 ? 'Rectangular' : 'Oblong';
+  else if (lw < 1.22) shape = jc >= 0.88 ? 'Square' : 'Round';
+  else if (jc >= 0.92) shape = 'Square';
+  else if (jc < 0.74) shape = 'Heart';
+  else shape = 'Oval';
+  out.shape = shape; out.lw = lw; out.jc = jc;
+  out.inRange = out.metrics.filter(m => m.status === 'in').length;
+  out.scored = out.metrics.filter(m => m.status !== 'info').length;
+  return out;
+}
+
+/* ---------- analyze state ---------- */
+const cv = $('#stage'), ctx = cv.getContext('2d');
+const img = new Image();
+let exampleURL = null;
+let isExample = true, points = {}, step = 0, showGuides = store.get('guides', true), result = null;
+let scale = 1, cssW = 0, cssH = 0, drag = null, rafPending = false, lastPtr = null;
+const profileDefaults = {style:'neutral', age:'25-34', skinType:'normal', concerns:[], undertone:'unsure', hairType:'straight', hairConcerns:[], beard:'none', bodyGoal:'maintain', sleep:'6-7', teeth:[], budget:'low'};
+let profile = Object.assign({}, profileDefaults, store.get('profile', {}));
+
+function nextMissing(){ const i = LM.findIndex(l => !points[l.id]); return i < 0 ? LM.length : i; }
+
+function loadAnalysis(){
+  const photo = store.get('photo', null);
+  if (photo) { isExample = false; points = store.get('points', {}) || {}; img.src = photo; }
+  else useExample();
+  step = nextMissing();
+}
+function useExample(){
+  isExample = true; points = JSON.parse(JSON.stringify(EXAMPLE_POINTS));
+  if (!exampleURL) exampleURL = makeExampleFace();
+  img.src = exampleURL; step = nextMissing();
+}
+img.onload = () => { fit(); recompute(); };
+
+function fit(){
+  const wrap = $('#stageWrap');
+  const maxW = wrap.clientWidth;
+  if (!img.naturalWidth || !maxW) return;
+  const maxH = Math.max(340, window.innerHeight * 0.7);
+  const ar = img.naturalWidth / img.naturalHeight;
+  cssW = Math.min(maxW, maxH * ar); cssH = cssW / ar; scale = cssW / img.naturalWidth;
+  const dpr = window.devicePixelRatio || 1;
+  cv.style.width = cssW + 'px'; cv.style.height = cssH + 'px';
+  cv.width = Math.round(cssW * dpr); cv.height = Math.round(cssH * dpr);
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  draw();
+}
+window.addEventListener('resize', () => { if (!$('#tab-analyze').hidden) fit(); });
+
+const OV = '#3fe3ee', OV_DARK = 'rgba(0,0,0,.6)';
+function toScr(pR){ const p = rot(pR, result.c, result.roll); return {x:p.x * scale, y:p.y * scale}; }
+function seg(a, b, dash){ ctx.save(); ctx.setLineDash(dash || []); ctx.lineWidth = 3; ctx.strokeStyle = OV_DARK; ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.stroke(); ctx.lineWidth = 1.4; ctx.strokeStyle = OV; ctx.stroke(); ctx.restore(); }
+function label(t, x, y, align){ ctx.save(); ctx.font = '600 12px "IBM Plex Mono", monospace'; ctx.textAlign = align || 'left'; ctx.textBaseline = 'middle'; ctx.lineWidth = 3.5; ctx.strokeStyle = OV_DARK; ctx.strokeText(t, x, y); ctx.fillStyle = '#ffffff'; ctx.fillText(t, x, y); ctx.restore(); }
+
+function drawGuides(){
+  const R = result.R, W = Math.abs(R.cheekR.x - R.cheekL.x);
+  const x0 = R.cheekL.x - W * 0.1, x1 = R.cheekR.x + W * 0.1;
+  const ys = [R.hairline.y, R.glabella.y, R.subnasale.y, R.chin.y];
+  ys.forEach(y => seg(toScr({x:x0, y}), toScr({x:x1, y}), [5, 4]));
+  const th = result.metrics[0].thirds;
+  for (let i = 0; i < 3; i++) { const p = toScr({x:x1, y:(ys[i] + ys[i + 1]) / 2}); label(Math.round(th[i]) + '%', Math.min(p.x + 4, cssW - 34), p.y); }
+  const midX = (R.glabella.x + R.subnasale.x + R.chin.x) / 3;
+  seg(toScr({x:midX, y:R.hairline.y}), toScr({x:midX, y:R.chin.y}), [2, 4]);
+  seg(toScr(R.eyeLO), toScr(R.eyeLI)); seg(toScr(R.eyeRI), toScr(R.eyeRO));
+  const jaw = [R.cheekL, R.jawL, R.chin, R.jawR, R.cheekR].map(toScr);
+  for (let i = 0; i < jaw.length - 1; i++) seg(jaw[i], jaw[i + 1]);
+  seg(toScr(R.mouthL), toScr(R.mouthR));
+}
+
+function draw(){
+  if (!img.naturalWidth || !cssW) return;
+  ctx.clearRect(0, 0, cssW, cssH);
+  ctx.drawImage(img, 0, 0, cssW, cssH);
+  if (showGuides && result && result.ok) drawGuides();
+  const cur = LM[step] ? LM[step].id : null;
+  LM.forEach(lm => {
+    const p = points[lm.id]; if (!p) return;
+    const active = drag && drag.id === lm.id;
+    ctx.beginPath(); ctx.arc(p.x * scale, p.y * scale, active ? 6.5 : 4.5, 0, Math.PI * 2);
+    ctx.fillStyle = active ? '#ffffff' : OV; ctx.fill(); ctx.lineWidth = 1.6; ctx.strokeStyle = 'rgba(0,0,0,.75)'; ctx.stroke();
+  });
+  if (drag && lastPtr) drawLoupe(lastPtr);
+  void cur;
+}
+
+function drawLoupe(p){
+  const Rr = Math.min(60, cssW * 0.16), Z = 3;
+  const sx = p.x * scale;
+  const cx = sx < cssW / 2 ? cssW - Rr - 10 : Rr + 10, cy = Rr + 10;
+  const src = Rr / (Z * scale);
+  ctx.save(); ctx.beginPath(); ctx.arc(cx, cy, Rr, 0, Math.PI * 2); ctx.clip();
+  ctx.fillStyle = '#000'; ctx.fillRect(cx - Rr, cy - Rr, Rr * 2, Rr * 2);
+  ctx.drawImage(img, p.x - src, p.y - src, src * 2, src * 2, cx - Rr, cy - Rr, Rr * 2, Rr * 2);
+  ctx.strokeStyle = OV; ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.moveTo(cx - Rr, cy); ctx.lineTo(cx - 5, cy); ctx.moveTo(cx + 5, cy); ctx.lineTo(cx + Rr, cy); ctx.moveTo(cx, cy - Rr); ctx.lineTo(cx, cy - 5); ctx.moveTo(cx, cy + 5); ctx.lineTo(cx, cy + Rr); ctx.stroke();
+  ctx.restore();
+  ctx.beginPath(); ctx.arc(cx, cy, Rr, 0, Math.PI * 2); ctx.lineWidth = 2; ctx.strokeStyle = '#ffffff'; ctx.stroke();
+}
+
+function evtToImg(e){
+  const r = cv.getBoundingClientRect();
+  return {x:Math.max(0, Math.min(img.naturalWidth, (e.clientX - r.left) / scale)), y:Math.max(0, Math.min(img.naturalHeight, (e.clientY - r.top) / scale))};
+}
+function schedule(){ if (rafPending) return; rafPending = true; requestAnimationFrame(() => { rafPending = false; draw(); }); }
+
+cv.addEventListener('pointerdown', e => {
+  if (!cssW) return;
+  const p = evtToImg(e);
+  let best = null, bd = Infinity;
+  for (const lm of LM) { const q = points[lm.id]; if (!q) continue; const d = Math.hypot((q.x - p.x) * scale, (q.y - p.y) * scale); if (d < bd) { bd = d; best = lm.id; } }
+  const placingId = LM[step] ? LM[step].id : null;
+  if (best && bd < 16 && !(placingId && bd > 9)) drag = {id:best};
+  else if (placingId) { points[placingId] = p; drag = {id:placingId, placing:true}; }
+  else if (best && bd < 28) drag = {id:best};
+  else return;
+  lastPtr = points[drag.id];
+  try { cv.setPointerCapture(e.pointerId); } catch (_) {}
+  e.preventDefault(); schedule();
+});
+cv.addEventListener('pointermove', e => {
+  if (!drag) return;
+  points[drag.id] = evtToImg(e); lastPtr = points[drag.id]; schedule();
+});
+function endDrag(){
+  if (!drag) return;
+  drag = null; lastPtr = null;
+  step = nextMissing();
+  persistPoints(); recompute();
+}
+cv.addEventListener('pointerup', endDrag);
+cv.addEventListener('pointercancel', endDrag);
+
+function persistPoints(){ if (!isExample) store.set('points', points); }
+
+$('#undoBtn').addEventListener('click', () => {
+  for (let i = LM.length - 1; i >= 0; i--) if (points[LM[i].id]) { delete points[LM[i].id]; break; }
+  step = nextMissing(); persistPoints(); recompute();
+});
+const clearBtn = $('#clearBtn');
+let clearArm = false;
+clearBtn.addEventListener('click', () => {
+  if (!clearArm) { clearArm = true; clearBtn.textContent = 'Confirm clear'; setTimeout(() => { clearArm = false; clearBtn.textContent = 'Clear points'; }, 3000); return; }
+  clearArm = false; clearBtn.textContent = 'Clear points';
+  points = {}; step = 0; persistPoints(); recompute();
+});
+$('#guideBtn').addEventListener('click', () => { showGuides = !showGuides; store.set('guides', showGuides); updateGuideBtn(); draw(); });
+function updateGuideBtn(){ const b = $('#guideBtn'); b.textContent = showGuides ? 'Guides on' : 'Guides off'; b.setAttribute('aria-pressed', String(showGuides)); }
+const delBtn = $('#delPhotoBtn');
+let delArm = false;
+delBtn.addEventListener('click', () => {
+  if (!delArm) { delArm = true; delBtn.textContent = 'Confirm delete'; setTimeout(() => { delArm = false; delBtn.textContent = 'Delete photo'; }, 3000); return; }
+  delArm = false; delBtn.textContent = 'Delete photo';
+  store.del('photo'); store.del('points'); useExample(); toast('Photo deleted. Showing the example face.');
+});
+
+/* uploads */
+function compress(file, max, q){
+  return new Promise((res, rej) => {
+    const u = URL.createObjectURL(file), im = new Image();
+    im.onload = () => {
+      const s = Math.min(1, max / Math.max(im.naturalWidth, im.naturalHeight));
+      const c = document.createElement('canvas'); c.width = Math.round(im.naturalWidth * s); c.height = Math.round(im.naturalHeight * s);
+      c.getContext('2d').drawImage(im, 0, 0, c.width, c.height); URL.revokeObjectURL(u);
+      res(c.toDataURL('image/jpeg', q));
+    };
+    im.onerror = () => { URL.revokeObjectURL(u); rej(new Error('decode')); };
+    im.src = u;
+  });
+}
+async function loadMainFile(file){
+  if (!file) return;
+  if (!/^image\//.test(file.type) && !/\.(jpe?g|png|webp|gif|heic)$/i.test(file.name || '')) { toast('Choose an image file (JPG, PNG or WebP).'); return; }
+  let url;
+  try { url = await compress(file, 1100, 0.86); }
+  catch (e) { toast('This browser can’t read that image. Export it as JPG and try again (iPhone HEIC photos often need this).'); return; }
+  isExample = false; points = {}; step = 0; result = null;
+  store.set('photo', url); store.set('points', {});
+  img.src = url;
+  toast('Photo loaded. Tap the hairline to start.');
+}
+$('#uploadBtn').addEventListener('click', () => $('#fileIn').click());
+$('#fileIn').addEventListener('change', e => { loadMainFile(e.target.files[0]); e.target.value = ''; });
+const sw = $('#stageWrap');
+['dragenter', 'dragover'].forEach(t => sw.addEventListener(t, e => { e.preventDefault(); sw.classList.add('drag'); }));
+['dragleave', 'drop'].forEach(t => sw.addEventListener(t, e => { e.preventDefault(); sw.classList.remove('drag'); }));
+sw.addEventListener('drop', e => { const f = e.dataTransfer && e.dataTransfer.files[0]; if (f) loadMainFile(f); });
+document.addEventListener('paste', e => {
+  if ($('#tab-analyze').hidden) return;
+  const it = Array.from((e.clipboardData && e.clipboardData.items) || []).find(i => i.type.indexOf('image/') === 0);
+  if (it) loadMainFile(it.getAsFile());
+});
+
+function updateStepUI(){
+  $('#exampleBadge').hidden = !isExample;
+  delBtn.hidden = isExample;
+  const done = LM.filter(l => points[l.id]).length;
+  if (step < LM.length) {
+    $('#stepN').textContent = (step + 1) + ' / ' + LM.length;
+    $('#stepName').textContent = 'Tap: ' + LM[step].label;
+    $('#stepHint').textContent = LM[step].hint;
+  } else {
+    $('#stepN').textContent = done + ' / ' + LM.length;
+    $('#stepName').textContent = isExample ? 'Example landmarks are placed' : 'All points placed';
+    $('#stepHint').textContent = isExample ? 'Upload your own photo to measure your face. You can drag these points to see how the numbers react.' : 'Drag any point to fine-tune it. A magnifier appears while you drag.';
+  }
+  $('#ptList').innerHTML = LM.map((l, i) => '<button type="button" class="pt' + (points[l.id] ? ' done' : '') + (i === step ? ' cur' : '') + '" data-i="' + i + '"><i>' + (points[l.id] ? '✓' : '') + '</i>' + esc(l.label) + '</button>').join('');
+}
+$('#ptList').addEventListener('click', e => {
+  const b = e.target.closest('.pt'); if (!b) return;
+  const i = +b.dataset.i; delete points[LM[i].id]; step = i; persistPoints(); recompute();
+  cv.scrollIntoView({block:'nearest', behavior:'smooth'});
+});
+
+function recompute(){
+  result = analyze(points, profile.style);
+  updateStepUI(); draw(); renderResults();
+}
+
+function renderResults(){
+  const el = $('#results');
+  const ex = isExample ? '<span class="badge">Example results</span>' : '';
+  if (!result || !result.ok) {
+    const n = result && result.n != null ? result.n : LM.filter(l => points[l.id]).length;
+    el.innerHTML = '<div class="row" style="justify-content:space-between"><h3>Your readout</h3>' + ex + '</div>' +
+      (result && result.order ? '<p class="note">Some points look out of order (for example the chin above the nose, or left and right swapped). Check the landmark list and re-place them.</p>' :
+      '<p class="muted">Place all ' + LM.length + ' landmarks to see your measurements. ' + n + ' of ' + LM.length + ' placed.</p><div class="bar"><span style="width:' + (n / LM.length * 100) + '%"></span></div>');
+    return;
+  }
+  const S = SHAPES[result.shape], st = profile.style;
+  let h = '<div class="row" style="justify-content:space-between"><h3>Your readout</h3>' + ex + '</div>';
+  h += '<div class="summary">' +
+    '<div class="stat"><div class="label">Face shape</div><div class="v">' + result.shape + '</div><div class="s mono">L/W ' + fmt(result.lw) + '</div></div>' +
+    '<div class="stat"><div class="label">Symmetry</div><div class="v">' + fmt(result.symmetry, 0) + '%</div><div class="s">paired points</div></div>' +
+    '<div class="stat"><div class="label">In typical range</div><div class="v">' + result.inRange + ' of ' + result.scored + '</div><div class="s">proportion checks</div></div></div>';
+  result.warnings.forEach(w => { h += '<p class="note">' + esc(w) + '</p>'; });
+  h += '<dl class="shape"><dt>Shape</dt><dd>' + esc(S.sum) + '</dd><dt>Hair</dt><dd>' + esc(st === 'fem' ? S.hairF : st === 'masc' ? S.hairM : S.hairM + ' Longer hair: ' + S.hairF) + '</dd><dt>Glasses</dt><dd>' + esc(S.glasses) + '</dd>' + (st !== 'fem' ? '<dt>Beard</dt><dd>' + esc(S.beard) + '</dd>' : '') + '</dl>';
+  h += '<div>';
+  result.metrics.forEach(m => {
+    const status = m.status;
+    const chip = status === 'info' ? '<span class="chip info">Descriptive</span>' : '<span class="chip ' + status + '">' + STATUS_TXT[status] + '</span>';
+    h += '<details class="metric"><summary><div><div class="nm">' + esc(m.name) + '</div><div class="rg">Typical: <span class="mono">' + esc(m.range) + '</span></div></div><span class="val">' + esc(m.value) + '</span>' + chip + '</summary><div class="body">';
+    if (m.thirds) h += '<div class="thirds" aria-hidden="true">' + m.thirds.map(t => '<span style="flex:' + t.toFixed(1) + '"></span>').join('') + '</div>';
+    h += '<p class="small muted">' + esc(m.meaning) + '</p><ul>' + m.tips.map(t => '<li>' + esc(t) + '</li>').join('') + '</ul></div></details>';
+  });
+  h += '</div><div class="row"><button class="btn" type="button" data-go="plan">Build my plan</button><button class="btn" type="button" data-go="ask">Ask Claude about this photo</button></div>';
+  el.innerHTML = h;
+}
+$('#results').addEventListener('click', e => { const b = e.target.closest('[data-go]'); if (b) showTab(b.dataset.go); });
+
+/* ---------- plan ---------- */
+const form = $('#profileForm');
+function fillForm(){
+  $$('input', form).forEach(i => {
+    const v = profile[i.name];
+    i.checked = Array.isArray(v) ? v.indexOf(i.value) >= 0 : v === i.value;
+  });
+  $('#beardSet').hidden = profile.style === 'fem';
+}
+form.addEventListener('change', () => {
+  const p = {};
+  ['style','age','skinType','undertone','hairType','beard','bodyGoal','sleep','budget'].forEach(n => { const c = $('input[name="' + n + '"]:checked', form); p[n] = c ? c.value : profileDefaults[n]; });
+  ['concerns','hairConcerns','teeth'].forEach(n => { p[n] = $$('input[name="' + n + '"]:checked', form).map(i => i.value); });
+  profile = p; store.set('profile', profile);
+  $('#beardSet').hidden = profile.style === 'fem';
+  result = analyze(points, profile.style);
+  renderPlan(); renderResults();
+});
+
+function buildPlan(p, r){
+  const sec = [], tasks = [];
+  const has = (arr, v) => (p[arr] || []).indexOf(v) >= 0;
+  const M = p.style === 'masc', F = p.style === 'fem';
+  const minor = p.age === 'u18';
+  const brands = p.budget === 'low' ? 'Pharmacy basics are enough (e.g. CeraVe, The Ordinary, Differin).' : p.budget === 'mid' ? 'Mid-range options (e.g. La Roche-Posay, Paula’s Choice) are pleasant but not more effective than pharmacy basics.' : 'A bigger budget is best spent on a dermatologist visit and prescription retinoid rather than luxury creams.';
+  const oily = p.skinType === 'oily' || p.skinType === 'combination', dry = p.skinType === 'dry' || has('concerns', 'flaky'), sens = p.skinType === 'sensitive';
+
+  // skin
+  const am = [], pm = [];
+  am.push({t:'Cleanse gently', d:dry || sens ? 'Rinse with lukewarm water or a cream cleanser in the morning; harsh foaming washes strip a dry barrier.' : 'A gentle gel or foaming cleanser. Oily skin does not need scrubbing, just a proper wash.', ev:'Moderate'});
+  if (has('concerns', 'marks') || has('concerns', 'texture')) am.push({t:'Vitamin C or niacinamide serum', d:'Vitamin C (10–20% L-ascorbic acid, or a gentler derivative) or 4–5% niacinamide fades marks and evens tone over 8–12 weeks.', ev:'Moderate'});
+  am.push({t:'Moisturiser', d:oily ? 'A light gel moisturiser. Skipping it often makes oily skin produce more shine.' : 'A cream with ceramides or glycerin, applied to slightly damp skin.', ev:'Moderate'});
+  am.push({t:'Sunscreen SPF 30+, every morning', d:'The single strongest anti-ageing and anti-pigmentation habit. Two finger-lengths for face and neck. Reapply when outdoors for long. ' + (oily ? 'Look for a fluid or gel texture.' : ''), ev:'Strong'});
+  pm.push({t:'Cleanse', d:'Remove sunscreen and oil. If you wear heavy SPF or makeup, double cleanse: oil or balm first, then a gentle cleanser.', ev:'Moderate'});
+  if (has('concerns', 'acne')) pm.push({t:'Acne treatment: adapalene 0.1% gel', d:'Over-the-counter retinoid. Pea-sized amount on the whole face, 3 nights a week, building to nightly. Expect a purge for 4–6 weeks. Add benzoyl peroxide 2.5–5% wash in the morning for inflamed spots.', ev:'Strong'});
+  else if (!minor && (has('concerns', 'lines') || has('concerns', 'texture') || p.age === '25-34' || p.age === '35-44' || p.age === '45+')) pm.push({t:'Retinoid 2–3 nights a week', d:'Adapalene 0.1% or retinol 0.2–0.5%; prescription tretinoin is the strongest. Start slow, pea-sized amount, always with daytime SPF. Skip during pregnancy.', ev:'Strong'});
+  if (has('concerns', 'pores')) pm.push({t:'Salicylic acid (BHA) 2%', d:'Leave-on BHA 2–3 nights a week on non-retinoid nights clears blackheads and makes pores look smaller.', ev:'Moderate'});
+  if (has('concerns', 'marks') || has('concerns', 'redness')) pm.push({t:'Azelaic acid 10–15%', d:'Fades post-acne marks and calms redness; safe alongside most routines. Persistent facial redness can be rosacea, worth a doctor visit.', ev:'Moderate'});
+  if (has('concerns', 'texture') && !has('concerns', 'acne')) pm.push({t:'Exfoliating acid 1–2× a week', d:'Lactic or glycolic acid on a non-retinoid night for smoother, brighter skin. Not on the same night as a retinoid.', ev:'Moderate'});
+  pm.push({t:'Moisturiser', d:dry ? 'A richer ceramide cream; seal very dry patches with a thin layer of petrolatum.' : 'Same as morning, or slightly richer.', ev:'Moderate'});
+  sec.push({title:'Skin · morning', items:am});
+  sec.push({title:'Skin · night', items:pm, foot:brands});
+  tasks.push({id:'am', label:'Morning skin routine', sub:am.map(i => i.t.split(':')[0]).join(' → ')});
+  tasks.push({id:'spf', label:'Sunscreen applied', sub:'SPF 30+, face, ears and neck'});
+  tasks.push({id:'pm', label:'Night skin routine', sub:pm.map(i => i.t.split(':')[0]).join(' → ')});
+
+  if (has('concerns', 'eyes')) sec.push({title:'Under-eyes', items:[
+    {t:'Sleep and evening salt/alcohol', d:'Puffiness is mostly fluid. 7–9 hours of sleep, less salt and alcohol at night, and a slightly raised pillow reduce it.', ev:'Moderate'},
+    {t:'Cold compress in the morning', d:'Two minutes with cold spoons or a cold pack shrinks puffiness for the day.', ev:'Weak'},
+    {t:'Pigment vs. shadow', d:'Brown circles respond slowly to vitamin C, retinoids and SPF. Hollow shadows are structural; colour-correcting concealer is the practical fix, tear-trough filler the professional one.', ev:'Moderate'}]});
+
+  // hair & grooming
+  const hair = [];
+  if (r && r.ok) {
+    const S = SHAPES[r.shape];
+    hair.push({t:'Haircut for a ' + r.shape.toLowerCase() + ' face', d:F ? S.hairF : M ? S.hairM : S.hairM + ' For longer hair: ' + S.hairF, ev:'Pro'});
+  } else hair.push({t:'Haircut that fits your face shape', d:'Finish the Analyze tab to get cut suggestions for your face shape.', ev:'Pro'});
+  hair.push({t:'Trim on a schedule', d:M ? 'Short styles lose shape after 3–4 weeks. Book the next cut when you pay for this one.' : 'Trim every 8–12 weeks to keep ends healthy and the shape intentional.', ev:'Pro'});
+  if (p.hairType === 'curly' || p.hairType === 'coily' || has('hairConcerns', 'frizz')) hair.push({t:'Moisture-first hair care', d:'Sulfate-free shampoo 1–3× a week, conditioner every wash, leave-in conditioner, and dry with a microfibre towel or T-shirt. Avoid brushing curls dry.', ev:'Moderate'});
+  if (has('hairConcerns', 'dandruff') || has('hairConcerns', 'oily')) hair.push({t:'Medicated shampoo', d:'Ketoconazole 1–2% or zinc pyrithione shampoo 2–3× a week, left on for 3–5 minutes, controls dandruff and oily scalp.', ev:'Strong'});
+  if (has('hairConcerns', 'thinning')) {
+    hair.push({t:'Act early on thinning', d:minor ? 'Talk to a doctor first; most hair-loss medicines are not for under-18s.' : 'Minoxidil (5% foam or solution, or oral by prescription) is proven to slow loss and regrow some hair; finasteride by prescription for male-pattern loss. Ketoconazole shampoo helps a little. Starting early keeps more hair. See a doctor before starting.', ev:'Strong'});
+    hair.push({t:'Style for thinner hair', d:'Shorter, textured cuts with matte product look fuller than long, flat hair. Avoid heavy gels that clump strands.', ev:'Pro'});
+    if (!minor) tasks.push({id:'hairtx', label:'Hair-loss treatment', sub:'As prescribed or per pack instructions'});
+  }
+  sec.push({title:'Hair', items:hair});
+
+  const groom = [];
+  groom.push({t:'Brows', d:F ? 'Brush up with clear or tinted gel; the tail should end on a line from the nostril through the outer eye corner. Remove only strays below the brow.' : 'Brush up, trim hairs that stick out past the line, and remove only clear strays between the brows. Over-plucking looks worse than none.', ev:'Pro'});
+  if (!F && p.beard !== 'none') {
+    const lowerLong = r && r.ok && r.metrics[0].thirds[2] > 36, lowerShort = r && r.ok && r.metrics[0].thirds[2] < 30;
+    let bd = p.beard === 'full' ? 'Keep the neckline 1–2 fingers above the Adam’s apple and the cheek line natural, just tidied. ' : p.beard === 'patchy' ? 'Patchy growth looks best as 3–5 mm stubble kept even with a guard. Give a beard 8 weeks before judging it. ' : 'Shave with the grain after a warm shower; a fresh blade and a non-alcohol aftershave balm prevent bumps. ';
+    if (p.beard !== 'clean') { if (lowerLong) bd += 'Your lower third is long, so keep the chin short and the sides fuller.'; else if (lowerShort) bd += 'Your lower third is short, so leave extra length at the chin.'; else if (r && r.ok) bd += SHAPES[r.shape].beard; }
+    groom.push({t:p.beard === 'clean' ? 'Clean shave' : 'Beard shape', d:bd, ev:'Pro'});
+  }
+  if (F || p.style === 'neutral') {
+    const mk = [];
+    if (r && r.ok) r.metrics.forEach(m => { if (m.status !== 'in' && m.status !== 'info' && ['eyes','tilt','lower','mouth','lips','nose'].indexOf(m.id) >= 0) mk.push(m.tips[0]); });
+    groom.push({t:'Makeup that follows your proportions', d:mk.length ? mk.join(' ') : 'Your measured proportions are balanced, so keep makeup light: skin-matched concealer, brow gel, and mascara go a long way.', ev:'Pro'});
+  }
+  groom.push({t:'Lips', d:'An SPF lip balm daily; gently exfoliate flaky lips with a damp cloth.', ev:'Moderate'});
+  sec.push({title:'Grooming', items:groom});
+
+  // body
+  const body = [];
+  body.push({t:p.bodyGoal === 'lose' ? 'Moderate calorie deficit' : p.bodyGoal === 'build' ? 'Small calorie surplus' : 'Stable intake, mostly whole foods',
+    d:p.bodyGoal === 'lose' ? 'About 300–500 kcal below maintenance, aiming for 0.5–1% of body weight per week. Facial definition (jaw, cheekbones) shows up as body fat drops.' : p.bodyGoal === 'build' ? 'About 200–300 kcal above maintenance keeps fat gain small while you build muscle.' : 'Keep weight steady; focus on strength and protein to improve body composition.', ev:'Strong'});
+  body.push({t:'Protein 1.6–2.2 g per kg body weight', d:'Spread over 3–4 meals. Protects muscle in a deficit and builds it in a surplus.', ev:'Strong'});
+  body.push({t:'Resistance training 3× a week', d:M ? 'Full-body sessions; add shoulder, upper-back and neck work for a broader frame.' : 'Full-body sessions; glutes, back and shoulders do the most for posture and shape.', ev:'Strong'});
+  body.push({t:'7,000–10,000 steps a day', d:'Easy daily movement helps fat loss and reduces facial puffiness.', ev:'Strong'});
+  sec.push({title:'Body composition', items:body});
+  tasks.push({id:'move', label:'Training session or 8,000+ steps', sub:'Strength 3× a week, walk on the other days'});
+  tasks.push({id:'protein', label:'Protein target hit', sub:'1.6–2.2 g/kg'});
+
+  // lifestyle
+  const life = [];
+  life.push({t:'Sleep 7–9 hours', d:(p.sleep === 'lt6' ? 'You’re under 6 hours, which is your biggest quick win. ' : '') + 'In studies, the same people photographed after short sleep were rated more tired and less healthy-looking. Fixed wake time, dark cool room, no screens for the last 30 minutes.', ev:'Strong'});
+  life.push({t:'Water through the day', d:'Roughly 2–3 litres including food. It won’t transform skin, but dehydration shows as dullness and dark under-eyes.', ev:'Weak'});
+  life.push({t:'Limit alcohol, don’t smoke or vape', d:'Alcohol causes puffiness and redness the next day; smoking speeds up skin ageing and yellows teeth.', ev:'Strong'});
+  life.push({t:'Posture', d:'Forward head posture softens the jawline and neck in photos. Chin tucks (10 reps, twice a day) and a screen at eye level help.', ev:'Moderate'});
+  sec.push({title:'Lifestyle', items:life});
+  tasks.push({id:'sleep', label:'7–9 hours of sleep', sub:'Log this in the morning'});
+  tasks.push({id:'water', label:'About 2 litres of water'});
+  tasks.push({id:'posture', label:'Chin tucks · 2 × 10'});
+
+  // smile
+  const smile = [{t:'Brush twice, floss daily', d:'Healthy gums and fresh breath matter more up close than tooth colour.', ev:'Strong'}];
+  if (has('teeth', 'yellow')) smile.push({t:'Whitening', d:'Peroxide whitening strips used as directed lift several shades. Get a dental cleaning first to remove surface stains; skip whitening if teeth are sensitive.', ev:'Strong'});
+  if (has('teeth', 'crooked')) smile.push({t:'Orthodontic consult', d:'Clear aligners or braces through a dentist or orthodontist. Avoid mail-order aligners without in-person checks.', ev:'Pro'});
+  sec.push({title:'Smile', items:smile});
+  tasks.push({id:'floss', label:'Brush twice + floss'});
+
+  // style
+  const tones = {warm:'Earth tones, olive, camel, cream, rust and warm navy; gold accessories.', cool:'Navy, charcoal, crisp white, jewel tones (emerald, sapphire, burgundy); silver accessories.', neutral:'Most colours work; muted mid-tones like dusty blue, sage and taupe are especially easy.', unsure:'Hold a white and a cream T-shirt near your face in daylight. If white looks better you’re likely cool; cream, likely warm.'};
+  const style = [{t:'Colours near your face', d:tones[p.undertone] || tones.unsure, ev:'Weak'},
+    {t:'Fit beats price', d:'Shoulder seams on your shoulder bone, trousers with no pooling at the ankle. A tailor can make cheap clothes look expensive.', ev:'Pro'}];
+  if (r && r.ok) style.push({t:'Glasses and sunglasses', d:SHAPES[r.shape].glasses, ev:'Pro'});
+  sec.push({title:'Style', items:style});
+
+  // pro options
+  const pro = [];
+  if (minor) pro.push({t:'Wait on procedures', d:'Faces keep changing into the early 20s. Stick to skin, hair, fitness and orthodontics if a dentist recommends it.', ev:'Pro'});
+  else {
+    pro.push({t:'Dermatologist visit', d:'Prescription tretinoin, stronger acne treatment, and a proper diagnosis for redness or pigmentation.', ev:'Pro'});
+    if (has('concerns', 'marks') || has('concerns', 'texture') || has('concerns', 'acne')) pro.push({t:'Chemical peels, microneedling, laser', d:'For acne scars, texture and stubborn pigmentation. Ask a board-certified dermatologist; results take several sessions.', ev:'Pro'});
+    pro.push({t:'Injectables (only after the basics)', d:'Botox and fillers are what paid face-analysis reports push. They’re temporary and only worth considering after skin, hair, body fat and sleep are handled, and only from a licensed medical professional.', ev:'Pro'});
+  }
+  sec.push({title:'Professional options to ask about', items:pro});
+
+  sec.push({title:'Skip these', items:[
+    {t:'Bone smashing', d:'Hitting your face to “grow bone” has no evidence and risks fractures and nerve damage.', ev:'Avoid'},
+    {t:'Mewing for adult bone change', d:'Good tongue posture is harmless, but there’s no good evidence it reshapes an adult jaw.', ev:'Weak'},
+    {t:'Hours of hard jaw gum', d:'Can overwork the jaw joint (TMJ pain). Muscle gain from it is small.', ev:'Weak'},
+    {t:'DIY skin hacks', d:'Lemon juice, toothpaste and baking soda irritate skin and can cause dark marks.', ev:'Avoid'},
+    {t:'Filtered comparisons', d:'Compare yourself to your own photos under the same light, not to edited ones.', ev:'Pro'}]});
+  return {sec, tasks};
+}
+
+const EV_TXT = {Strong:'Strong evidence', Moderate:'Moderate evidence', Weak:'Weak evidence', Avoid:'Avoid', Pro:'Practical'};
+function renderPlan(){
+  const {sec} = buildPlan(profile, result && result.ok ? result : null);
+  let h = '';
+  if (!result || !result.ok || isExample) h += '<div class="card"><p class="small muted">' + (isExample ? 'Haircut, glasses and beard advice below use the example face. Upload your photo in Analyze to personalise it.' : 'Finish placing landmarks in Analyze to add face-shape advice.') + '</p></div>';
+  sec.forEach(s => {
+    h += '<div class="card sec"><h3>' + esc(s.title) + '</h3>';
+    s.items.forEach(i => { h += '<div class="item"><b>' + esc(i.t) + '</b><span class="ev ' + i.ev + '">' + EV_TXT[i.ev] + '</span><p>' + esc(i.d) + '</p></div>'; });
+    if (s.foot) h += '<p class="small muted" style="padding-top:8px;border-top:1px solid var(--line)">' + esc(s.foot) + '</p>';
+    h += '</div>';
+  });
+  $('#planOut').innerHTML = h;
+}
+
+/* ---------- today ---------- */
+let checks = store.get('checks', {});
+let custom = store.get('customTasks', []);
+function allTasks(){ return buildPlan(profile, result && result.ok ? result : null).tasks.concat(custom.map(c => ({id:c.id, label:c.label, custom:true}))); }
+function dayFrac(key, tasks){ const d = checks[key]; if (!d) return 0; const n = tasks.filter(t => d[t.id]).length; return tasks.length ? n / tasks.length : 0; }
+function renderToday(){
+  const tasks = allTasks(), k = dayKey(), d = checks[k] || {};
+  $('#todayTitle').textContent = 'Today · ' + new Date().toLocaleDateString(undefined, {weekday:'long', day:'numeric', month:'long'});
+  $('#checkList').innerHTML = tasks.map(t => '<label class="check' + (d[t.id] ? ' done' : '') + '"><input type="checkbox" data-id="' + esc(t.id) + '"' + (d[t.id] ? ' checked' : '') + '><span class="t"><span>' + esc(t.label) + '</span>' + (t.sub ? '<small>' + esc(t.sub) + '</small>' : '') + '</span>' + (t.custom ? '<button type="button" class="btn ghost small danger" data-rm="' + esc(t.id) + '" aria-label="Remove ' + esc(t.label) + '">Remove</button>' : '') + '</label>').join('');
+  const n = tasks.filter(t => d[t.id]).length;
+  $('#todayCount').textContent = n + ' / ' + tasks.length;
+  $('#todayBar').style.width = (tasks.length ? n / tasks.length * 100 : 0) + '%';
+  // heat map: 4 weeks ending this week, Monday first
+  const now = new Date(); now.setHours(12, 0, 0, 0);
+  const dow = (now.getDay() + 6) % 7;
+  const start = new Date(now); start.setDate(now.getDate() - dow - 21);
+  const names = ['M','T','W','T','F','S','S'];
+  $('#heatDays').innerHTML = names.map(x => '<span>' + x + '</span>').join('');
+  let cells = '', total = 0, cnt = 0;
+  for (let i = 0; i < 28; i++) {
+    const dt = new Date(start); dt.setDate(start.getDate() + i);
+    const key = dayKey(dt), future = dt > now;
+    const f = future ? 0 : dayFrac(key, tasks);
+    if (!future) { total += f; cnt++; }
+    const l = future || f === 0 ? 0 : f < 0.5 ? 1 : f < 0.8 ? 2 : 3;
+    cells += '<div data-l="' + l + '"' + (key === k ? ' class="today"' : '') + ' title="' + key + ': ' + Math.round(f * 100) + '%"' + (future ? ' style="opacity:.35"' : '') + '></div>';
+  }
+  $('#heat').innerHTML = cells;
+  $('#avg28').textContent = Math.round(cnt ? total / cnt * 100 : 0) + '%';
+  let streak = 0; const cur = new Date(now);
+  if (dayFrac(dayKey(cur), tasks) < 0.8) cur.setDate(cur.getDate() - 1);
+  while (dayFrac(dayKey(cur), tasks) >= 0.8 && streak < 3650) { streak++; cur.setDate(cur.getDate() - 1); }
+  $('#streak').textContent = streak;
+}
+$('#checkList').addEventListener('change', e => {
+  const id = e.target.dataset.id; if (!id) return;
+  const k = dayKey(); checks[k] = checks[k] || {};
+  if (e.target.checked) checks[k][id] = 1; else delete checks[k][id];
+  store.set('checks', checks); renderToday();
+});
+$('#checkList').addEventListener('click', e => {
+  const b = e.target.closest('[data-rm]'); if (!b) return;
+  e.preventDefault(); custom = custom.filter(c => c.id !== b.dataset.rm); store.set('customTasks', custom); renderToday();
+});
+function addCustom(){
+  const v = $('#customTask').value.trim(); if (!v) return;
+  custom.push({id:'c' + Date.now().toString(36), label:v}); store.set('customTasks', custom);
+  $('#customTask').value = ''; renderToday();
+}
+$('#addTaskBtn').addEventListener('click', addCustom);
+$('#customTask').addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); addCustom(); } });
+
+/* ---------- progress ---------- */
+let journal = store.get('journal', []);
+let pendingEntryImg = null;
+$('#entryDate').value = dayKey();
+$('#entryPhotoBtn').addEventListener('click', () => $('#entryFile').click());
+$('#entryFile').addEventListener('change', async e => {
+  const f = e.target.files[0]; e.target.value = ''; if (!f) return;
+  try { pendingEntryImg = await compress(f, 640, 0.78); $('#entryFileName').textContent = f.name || 'Photo ready'; }
+  catch (_) { toast('This browser can’t read that image. Export it as JPG and try again.'); }
+});
+$('#addEntryBtn').addEventListener('click', () => {
+  if (!pendingEntryImg) { toast('Choose a photo for this entry first.'); return; }
+  const entry = {id:'e' + Date.now().toString(36), date:$('#entryDate').value || dayKey(), note:$('#entryNote').value.trim(), img:pendingEntryImg};
+  const next = journal.concat([entry]).sort((a, b) => a.date < b.date ? -1 : a.date > b.date ? 1 : 0);
+  if (!store.set('journal', next)) return;
+  journal = next; pendingEntryImg = null; $('#entryFileName').textContent = 'No photo chosen'; $('#entryNote').value = '';
+  toast('Entry saved.'); renderProgress();
+});
+function renderProgress(){
+  const g = $('#gallery');
+  $('#entryCount').textContent = journal.length + (journal.length === 1 ? ' entry' : ' entries');
+  if (!journal.length) g.innerHTML = '<p class="small muted" style="grid-column:1/-1">No entries yet. Add a front-facing photo today as your starting point; the compare slider lights up once you have two.</p>';
+  else g.innerHTML = journal.slice().reverse().map(en => '<div class="entry"><img src="' + en.img + '" alt="Progress photo from ' + esc(en.date) + '"><div class="mono small">' + esc(en.date) + '</div>' + (en.note ? '<div class="meta">' + esc(en.note) + '</div>' : '') + '<div><button type="button" class="btn ghost small danger" data-del="' + en.id + '">Delete</button></div></div>').join('');
+  const opts = journal.map((en, i) => '<option value="' + en.id + '">' + esc(en.date) + (en.note ? ' · ' + esc(en.note.slice(0, 24)) : '') + '</option>').join('');
+  const a = $('#cmpA'), b = $('#cmpB'), av = a.value, bv = b.value;
+  a.innerHTML = opts || '<option>No entries</option>'; b.innerHTML = opts || '<option>No entries</option>';
+  if (journal.length) {
+    a.value = journal.some(x => x.id === av) ? av : journal[0].id;
+    b.value = journal.some(x => x.id === bv) ? bv : journal[journal.length - 1].id;
+  }
+  updateCompare(); updateMeter();
+}
+$('#gallery').addEventListener('click', e => {
+  const b = e.target.closest('[data-del]'); if (!b) return;
+  if (b.dataset.armed !== '1') { b.dataset.armed = '1'; b.textContent = 'Confirm delete'; setTimeout(() => { if (b.isConnected) { b.dataset.armed = ''; b.textContent = 'Delete'; } }, 3000); return; }
+  journal = journal.filter(x => x.id !== b.dataset.del); store.set('journal', journal); renderProgress();
+});
+function updateCompare(){
+  const A = journal.find(x => x.id === $('#cmpA').value), B = journal.find(x => x.id === $('#cmpB').value);
+  const ia = $('#cmpImgA'), ib = $('#cmpImgB');
+  $('#compareBox').hidden = !(A && B);
+  $('#cmpRange').hidden = !(A && B);
+  $('label[for="cmpRange"]').hidden = !(A && B);
+  if (A && B) { ia.src = A.img; ib.src = B.img; }
+  const v = +$('#cmpRange').value;
+  ib.style.clipPath = 'inset(0 0 0 ' + v + '%)'; $('#cmpDivider').style.left = v + '%';
+}
+['cmpA', 'cmpB'].forEach(id => $('#' + id).addEventListener('change', updateCompare));
+$('#cmpRange').addEventListener('input', updateCompare);
+function updateMeter(){
+  let bytes = 0;
+  try { store.keys().forEach(k => { bytes += (k.length + (localStorage.getItem(k) || '').length) * 2; }); } catch (_) {}
+  const cap = 5 * 1024 * 1024;
+  $('#storeUse').textContent = (bytes / 1048576).toFixed(2) + ' MB of ~5 MB';
+  $('#storeBar').style.width = Math.min(100, bytes / cap * 100) + '%';
+}
+function collectAll(){ const o = {app:'glow-atlas', version:1, exported:new Date().toISOString(), data:{}}; store.keys().forEach(k => { try { o.data[k.slice(KEY.length)] = JSON.parse(localStorage.getItem(k)); } catch (_) {} }); return o; }
+$('#exportBtn').addEventListener('click', async () => {
+  const text = JSON.stringify(collectAll()), name = 'glow-atlas-backup-' + dayKey() + '.json';
+  if (window.claude && typeof window.claude.use === 'function') {
+    try {
+      const dl = await window.claude.use('downloads');
+      if (dl) { const r = await dl.save({filename:name, data:text}); if (r && r.status === 'saved') toast('Backup saved.'); return; }
+    } catch (e) { if (!e || e.code !== 'unavailable') { toast('Backup not saved.'); return; } }
+  }
+  try {
+    const url = URL.createObjectURL(new Blob([text], {type:'application/json'}));
+    const a = document.createElement('a'); a.href = url; a.download = name; document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 2000); toast('Backup downloaded.');
+  } catch (_) { toast('This view can’t save files. Open the app as a local .html file to export.'); }
+});
+$('#importBtn').addEventListener('click', () => $('#importFile').click());
+$('#importFile').addEventListener('change', e => {
+  const f = e.target.files[0]; e.target.value = ''; if (!f) return;
+  const rd = new FileReader();
+  rd.onload = () => {
+    try {
+      const o = JSON.parse(rd.result);
+      if (!o || o.app !== 'glow-atlas' || !o.data) throw new Error('shape');
+      Object.keys(o.data).forEach(k => store.set(k, o.data[k]));
+      toast('Backup restored.'); reloadAll();
+    } catch (_) { toast('That file isn’t a Glow Atlas backup.'); }
+  };
+  rd.readAsText(f);
+});
+const wipeBtn = $('#wipeBtn');
+wipeBtn.addEventListener('click', () => {
+  if (wipeBtn.dataset.armed !== '1') { wipeBtn.dataset.armed = '1'; wipeBtn.textContent = 'Erase everything? Click again'; setTimeout(() => { wipeBtn.dataset.armed = ''; wipeBtn.textContent = 'Erase all data'; }, 3500); return; }
+  wipeBtn.dataset.armed = ''; wipeBtn.textContent = 'Erase all data';
+  store.keys().forEach(k => { try { localStorage.removeItem(k); } catch (_) {} });
+  toast('All data erased.'); reloadAll();
+});
+function reloadAll(){
+  theme = store.get('theme', 'auto'); applyTheme();
+  profile = Object.assign({}, profileDefaults, store.get('profile', {}));
+  checks = store.get('checks', {}); custom = store.get('customTasks', []); journal = store.get('journal', []);
+  showGuides = store.get('guides', true); updateGuideBtn();
+  fillForm(); loadAnalysis(); recompute(); renderProgress(); renderPlan(); renderToday();
+}
+
+/* ---------- ask claude ---------- */
+const FOCUS = {full:'a complete glow-up plan', skin:'skin only', hair:'hair, haircut and grooming (beard/brows)', style:'clothing style, colours and glasses', photos:'how to look better in photos (angles, light, expression, posture)'};
+function buildReport(focus, question, forChat){
+  const p = profile, r = result && result.ok && !isExample ? result : null;
+  const L = [];
+  L.push('You are a kind, frank, evidence-based appearance coach. I’m sharing ' + (forChat ? 'a photo of myself (attached)' : 'a photo of myself') + ' and would like glow-up advice, like a paid facial-analysis report.');
+  L.push('');
+  L.push('Rules: no attractiveness score or ranking. Don’t guess my ethnicity, health conditions or age. Lead with non-surgical, low-cost changes (skin, hair, grooming, brows, facial hair, style, body composition, sleep, posture, photo technique). Mention medical or cosmetic procedures only briefly, as things to ask a qualified professional about. Tie each tip to something you can see in the photo or to my measurements. Be specific: ingredient names, haircut names, how-to steps. Tag each tip with evidence strength (Strong / Moderate / Weak).');
+  L.push('Format: Markdown with sections "What’s already working", "Top 5 changes (highest impact first)", then focused sections for ' + FOCUS[focus] + '. Keep it under 600 words.');
+  L.push('');
+  L.push('About me: advice style ' + ({masc:'masculine', fem:'feminine', neutral:'neutral'})[p.style] + '; age ' + (p.age === 'u18' ? 'under 18' : p.age) + '; skin ' + p.skinType + (p.concerns.length ? ' (concerns: ' + p.concerns.join(', ') + ')' : '') + '; undertone ' + p.undertone + '; hair ' + p.hairType + (p.hairConcerns.length ? ' (' + p.hairConcerns.join(', ') + ')' : '') + (p.style !== 'fem' ? '; facial hair ' + p.beard : '') + '; goal ' + p.bodyGoal + ' fat/muscle; sleep ' + p.sleep + ' h; product budget ' + p.budget + '.');
+  if (r) {
+    L.push('');
+    L.push('Measurements from landmarks I placed on the photo (approximate):');
+    L.push('- Face shape estimate: ' + r.shape + ' (length/width ' + fmt(r.lw) + ')');
+    r.metrics.forEach(m => L.push('- ' + m.name + ': ' + m.value + ' (typical ' + m.range + ')'));
+    r.warnings.forEach(w => L.push('- Note: ' + w));
+  } else L.push('(No measurements yet; please judge proportions from the photo.)');
+  if (question) { L.push(''); L.push('My question: ' + question); }
+  return L.join('\n');
+}
+function renderReport(){ $('#reportText').value = buildReport(($('input[name="focus"]:checked') || {}).value || 'full', $('#askQ').value.trim(), true); }
+$('#askQ').addEventListener('input', renderReport);
+$$('input[name="focus"]').forEach(i => i.addEventListener('change', renderReport));
+$('#copyBtn').addEventListener('click', async () => {
+  renderReport(); const t = $('#reportText');
+  try { await navigator.clipboard.writeText(t.value); $('#copyStatus').textContent = 'Copied. Paste it into Claude with your photo.'; }
+  catch (_) { t.focus(); t.select(); $('#copyStatus').textContent = 'Text selected. Press Ctrl/Cmd + C to copy.'; }
+});
+
+function md(src){
+  const inline = s => s.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>').replace(/(^|[\s(])\*([^*\s][^*]*?)\*(?=[\s.,;:!?)]|$)/g, '$1<em>$2</em>');
+  let html = '', list = null;
+  const close = () => { if (list) { html += '</' + list + '>'; list = null; } };
+  esc(src).split('\n').forEach(raw => {
+    const l = raw.replace(/\s+$/, ''); let m;
+    if ((m = l.match(/^#{1,6}\s+(.*)/))) { close(); html += '<h4>' + inline(m[1]) + '</h4>'; }
+    else if ((m = l.match(/^\s*[-*•]\s+(.*)/))) { if (list !== 'ul') { close(); html += '<ul>'; list = 'ul'; } html += '<li>' + inline(m[1]) + '</li>'; }
+    else if ((m = l.match(/^\s*\d+[.)]\s+(.*)/))) { if (list !== 'ol') { close(); html += '<ol>'; list = 'ol'; } html += '<li>' + inline(m[1]) + '</li>'; }
+    else if (!l.trim() || /^-{3,}$/.test(l.trim())) close();
+    else { close(); html += '<p>' + inline(l) + '</p>'; }
+  });
+  close(); return html;
+}
+
+let sample = null, imgLimit = 0, askCtl = null, turns = [], busy = false;
+let extraFiles = [];
+const ERR = {
+  not_granted:'Claude access was declined for this page. Use the chat route instead.', sampling_disabled:'Claude isn’t available for this account here. Use the chat route instead.',
+  rate_limited:'Too many requests right now. Wait a minute and try again.', session_expired:'Your Claude session expired. Sign in again, then retry.',
+  image_rejected:'One of the photos couldn’t be read. Try a JPG or PNG under 20 MB.', refused:'Claude declined that request. Try rephrasing your question.',
+  images_unavailable:'This view can’t send photos. Your measurements were sent as text instead.', empty_completion:'Claude returned nothing. Try a shorter question.'
+};
+function hideLive(msg){ $('#livePanel').hidden = true; $('#fallbackTitle').textContent = 'Send it to Claude in a chat'; if (msg) toast(msg); }
+async function initClaude(){
+  if (!window.claude || typeof window.claude.use !== 'function') return;
+  try { sample = await window.claude.use('sample'); } catch (_) { sample = null; }
+  if (!sample) return;
+  try { const lim = await sample.limits(); imgLimit = lim && lim.images ? lim.images.maxCount : 0; } catch (_) { imgLimit = 0; }
+  $('#livePanel').hidden = false;
+  $('#fallbackTitle').textContent = 'Or send it to Claude in a chat';
+  $('#photoOpts').hidden = !imgLimit; $('#extraOpts').hidden = imgLimit < 2;
+  $('#answerEmpty').textContent = 'Press “Ask Claude” and your report will appear here.';
+  const saved = store.get('ask', null);
+  if (saved && saved.turns && saved.turns.length) { turns = saved.turns; renderChat(); }
+}
+$('#extraBtn').addEventListener('click', () => $('#extraFile').click());
+$('#extraFile').addEventListener('change', e => {
+  extraFiles = Array.from(e.target.files || []).slice(0, Math.max(0, imgLimit - 1)); e.target.value = '';
+  $('#extraNames').textContent = extraFiles.length ? extraFiles.length + ' extra photo' + (extraFiles.length > 1 ? 's' : '') + ' added' : 'Side profile or full-body shots help with hair and style advice.';
+});
+function dataURLtoBlob(u){ const [h, b] = u.split(','); const mime = (h.match(/:(.*?);/) || [])[1] || 'image/jpeg'; const bin = atob(b); const a = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) a[i] = bin.charCodeAt(i); return new Blob([a], {type:mime}); }
+
+function renderChat(streamText){
+  const box = $('#answer');
+  let h = '';
+  turns.forEach((t, i) => {
+    if (t.role === 'user') h += '<div class="bubble me small">' + (i === 0 ? esc(t.label || 'Report request sent') : esc(t.content)) + '</div>';
+    else h += '<div class="bubble">' + md(t.content) + '</div>';
+  });
+  if (streamText != null) h += '<div class="bubble">' + (streamText ? md(streamText) : '<p class="muted">Thinking… Claude is studying the photo; this can take up to a minute.</p>') + '</div>';
+  box.innerHTML = h || '<p class="muted small" id="answerEmpty">Press “Ask Claude” and your report will appear here.</p>';
+  $('#followRow').hidden = !turns.some(t => t.role === 'assistant') || busy;
+  $('#clearChatBtn').hidden = !turns.length || busy;
+}
+async function runSample(opts){
+  busy = true; askCtl = new AbortController();
+  $('#askBtn').disabled = true; $('#stopBtn').hidden = false; $('#askStatus').textContent = '';
+  renderChat('');
+  try {
+    const o = Object.assign({signal:askCtl.signal, cache:false, onText:({text}) => renderChat(text)}, opts || {});
+    const res = await sample(turns.map(t => ({role:t.role, content:t.content})), o);
+    turns.push({role:'assistant', content:res.text});
+    if (res.truncated) $('#askStatus').textContent = 'The answer was cut short. Ask a narrower follow-up for the rest.';
+  } catch (e) {
+    const code = e && e.code;
+    if (e && e.text && code !== 'refused') turns.push({role:'assistant', content:e.text + '\n\n*(interrupted)*'});
+    else turns.pop();
+    if (code === 'not_granted' || code === 'sampling_disabled' || code === 'not_declared' || code === 'capability_disabled' || code === 'capability_removed') hideLive(ERR[code] || 'Asking here isn’t available. Use the chat route.');
+    else if (code === 'images_unavailable') { imgLimit = 0; $('#photoOpts').hidden = true; $('#extraOpts').hidden = true; $('#askStatus').textContent = ERR.images_unavailable + ' Press Ask again to send text only.'; }
+    else if (code !== 'cancelled') $('#askStatus').textContent = ERR[code] || 'Something went wrong reaching Claude. Try again in a moment.';
+  } finally {
+    busy = false; askCtl = null; $('#askBtn').disabled = false; $('#stopBtn').hidden = true;
+    store.set('ask', {turns:turns.slice(-12)}); renderChat();
+  }
+}
+$('#askBtn').addEventListener('click', () => {
+  if (!sample || busy) return;
+  const focus = ($('input[name="focus"]:checked') || {}).value || 'full';
+  const q = $('#askQ').value.trim();
+  const images = [];
+  const photo = store.get('photo', null);
+  if (imgLimit && $('#useMainPhoto').checked && photo && !isExample) images.push(dataURLtoBlob(photo));
+  extraFiles.forEach(f => { if (images.length < imgLimit) images.push(f); });
+  let prompt = buildReport(focus, q, false);
+  if (!images.length) prompt += '\n\n(No photo attached in this request; base the advice on the measurements and profile, and say what a photo would add.)';
+  else prompt += '\n\nAttached: ' + images.length + ' photo' + (images.length > 1 ? 's' : '') + '. The first is my front-facing photo' + (images.length > 1 ? '; the others are extra angles.' : '.');
+  turns = [{role:'user', content:prompt, label:'Report request: ' + FOCUS[focus] + (images.length ? ' · ' + images.length + ' photo' + (images.length > 1 ? 's' : '') : ' · no photo') + (q ? ' · “' + q + '”' : '')}];
+  runSample(images.length ? {images} : {});
+});
+$('#stopBtn').addEventListener('click', () => { if (askCtl) askCtl.abort(); });
+function follow(){
+  const v = $('#followQ').value.trim(); if (!v || !sample || busy) return;
+  $('#followQ').value = ''; turns.push({role:'user', content:v}); runSample();
+}
+$('#followBtn').addEventListener('click', follow);
+$('#followQ').addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); follow(); } });
+$('#clearChatBtn').addEventListener('click', () => { turns = []; store.del('ask'); renderChat(); });
+
+/* ---------- boot ---------- */
+updateGuideBtn();
+fillForm();
+loadAnalysis();
+renderToday();
+renderProgress();
+showTab(store.get('tab', 'analyze'));
+initClaude();
+})();
+</script>
+</body>
+</html>
